@@ -82,9 +82,9 @@ void write(Vle vle_project, const std::string &filename)
 
     // Root
     ptree& rootNode = pt.add("vle_project", "");
-    rootNode.put("<xmlattr>.author", "");
+    rootNode.put("<xmlattr>.author", "Gauthier Quesnel");
     rootNode.put("<xmlattr>.date", "");
-    rootNode.put("<xmlattr>.version", "");
+    rootNode.put("<xmlattr>.version", "1.0");
     
     // Structures    
     ptree& structureNode = rootNode.put("structures", "");
@@ -94,36 +94,66 @@ void write(Vle vle_project, const std::string &filename)
     modelNode.put("<xmlattr>.dynamics", "");
     
     ptree& inNode = modelNode.put("in", "");
-    for (int i = 0; i < 5; i++) {
-        ptree& portNode = inNode.add("port", "");
-        std::string portName = "in";
-        portNode.put("<xmlattr>.name", portName);
-    }
+    ptree& inPortNode = inNode.add("port", "");
+    inPortNode.put("<xmlattr>.name", "inPort");
     
     ptree& outNode = modelNode.put("out", "");
-    for (int i = 0; i < 5; i++) {
-        ptree& portNode = outNode.add("port", "");
-        std::string portName = "out";
-        portNode.put("<xmlattr>.name", portName);
-    }
+    ptree& outPortNode = outNode.add("port", "");
+    outPortNode.put("<xmlattr>.name", "outPort");
 
     // Experiment
     ptree& experimentNode = rootNode.put("experiment", "");
-    experimentNode.put("<xmlattr>.name", "");
-    experimentNode.put("<xmlattr>.seed", "");
+    experimentNode.put("<xmlattr>.name", "test");
+    experimentNode.put("<xmlattr>.seed", "123456789");
 
     ptree& conditionsNode = experimentNode.put("conditions", "");
     ptree& conditionNode = conditionsNode.put("condition", "");
-    conditionNode.put("<xmlattr>.name", "");
+    conditionNode.put("<xmlattr>.name", "simulation_engine");
     
-    for (int i = 0; i < 5; i++) {
-        ptree& portNode = conditionNode.add("port", "");
-        std::string portName = "port";
-        portNode.put("<xmlattr>.name", portName);
-        portNode.put("double", i);
-    }
+    ptree& conditionPortNode = conditionNode.add("port", "");
+    conditionPortNode.put("<xmlattr>.name", "begin");
+    conditionPortNode.put("double", 0.0);
+
+    ptree& anotherConditionPortNode = conditionNode.add("port", "");
+    anotherConditionPortNode.put("<xmlattr>.name", "duration");
+    anotherConditionPortNode.put("double", 1.0);
     
-    experimentNode.add("views", "");
+    ptree& viewsNode = experimentNode.add("views.outputs", "");
+    ptree& outputNode = viewsNode.add("output", "");
+    outputNode.put("<xmlattr>.format", "local");
+    outputNode.put("<xmlattr>.location", "");
+    outputNode.put("<xmlattr>.name", "view");
+    outputNode.put("<xmlattr>.package", "vle.output");
+    outputNode.put("<xmlattr>.plugin", "storage");
+
+    ptree& mapNode = outputNode.put("map", "");
+    ptree& keyNodeColumns = mapNode.add("key", "");
+    keyNodeColumns.put("<xmlattr>.name", "columns");
+    keyNodeColumns.add("integer", 15);
+
+    ptree& keyNodeHeader = mapNode.add("key", "");
+    keyNodeHeader.put("<xmlattr>.name", "header");
+    keyNodeHeader.put("string", "top");
+
+    ptree& keyNodeIncColumns = mapNode.add("key", "");
+    keyNodeIncColumns.put("<xmlattr>.name", "inc_columns");
+    keyNodeIncColumns.put("integer", 10);
+
+    ptree& keyNodeIncRows = mapNode.add("key", "");
+    keyNodeIncRows.put("<xmlattr>.name", "inc_rows");
+    keyNodeIncRows.put("integer", 10);
+
+    ptree& keyNodeRows = mapNode.add("key", "");
+    keyNodeRows.put("<xmlattr>.name", "rows");
+    keyNodeRows.put("integer", 15);
+
+    ptree& viewNode = viewsNode.add("view", "");
+    viewNode.put("<xmlattr>.name", "view");
+    viewNode.put("<xmlattr>.output", "view");
+    viewNode.put("<xmlattr>.timestep", 1);
+    viewNode.put("<xmlattr>.type", "timed");
+
+    viewsNode.add("observables", "");
 
     write_xml(filename, pt);
 }
