@@ -39,7 +39,7 @@ struct Connection
 
 struct Connections
 {
-    Connection connection[50];
+    Connection connection[50]; // to be modified
 };
 
 struct Model 
@@ -64,7 +64,7 @@ struct Experiment
 
 };
 
-struct VleProject
+struct VLEProject
 {
     float version;
     std::string date;
@@ -73,23 +73,21 @@ struct VleProject
     Experiment experiment;
 };
 
-typedef std::vector<VleProject> Vle;
-
-void write(Vle vle_project, const std::string &filename)
+void write(VLEProject vle_project, const std::string &filename)
 {
     using boost::property_tree::ptree;
     ptree pt;
 
     // Root
     ptree& rootNode = pt.add("vle_project", "");
-    rootNode.put("<xmlattr>.author", "Gauthier Quesnel");
-    rootNode.put("<xmlattr>.date", "");
+    rootNode.put("<xmlattr>.author", "");
+    rootNode.put("<xmlattr>.date", vle_project.date);
     rootNode.put("<xmlattr>.version", "1.0");
     
     // Structures    
     ptree& structureNode = rootNode.put("structures", "");
     ptree& modelNode = structureNode.put("model", "");
-    modelNode.put("<xmlattr>.name", "");
+    modelNode.put("<xmlattr>.name", vle_project.structures.model.name);
     modelNode.put("<xmlattr>.type", "");
     modelNode.put("<xmlattr>.dynamics", "");
     
@@ -158,28 +156,56 @@ void write(Vle vle_project, const std::string &filename)
     write_xml(filename, pt);
 }
 
-Vle read(std::istream& is)
+VLEProject read(std::istream& is)
 {
     using boost::property_tree::ptree;
     ptree pt;
     read_xml(is, pt);
-    Vle res;
+    
+    VLEProject vle_project;
 
-    // read xmi file here
+    BOOST_FOREACH(ptree::value_type const& v, pt.get_child("XMI")) {
+        if (v.first == "<xmlattr>") {
+            ptree& root = pt.get_child("XMI");
+            vle_project.date = root.get<std::string>("<xmlattr>.timestamp");
+            // std::cout << "vle.date: " << vle.date << std::endl;
+        } else if (v.first == "XMI.content") {
+            Model model;
+            model.name = v.second.get<std::string>("UML:Model.<xmlattr>.name");
+            // std::cout << "model.name: " << model.name << std::endl;
 
-    return res;
+            Structures structures;
+            structures.model = model;
+
+            vle_project.structures = structures;
+        }
+    }
+
+    typedef ptree::path_type path;
+    using namespace std;
+    string eltPath = "XMI/XMI.content/UML:Model/UML:Namespace.ownedElement";
+    
+    BOOST_FOREACH(ptree::value_type const& p, 
+        pt.get_child(path(eltPath, '/'))) {
+            // get submodels here
+    }
+
+    return vle_project;
 }
 
 int main(int argc, char* argv[])
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " PATH_TO_FILE" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " SOURCE_FILE" << 
+            " DESTINATION_FILE" << std::endl;
+        
         return 1;
     }
-    std::ifstream input("test.xml");
-    Vle res = read(input);
 
-    write(res, "output.vpz");
+    std::ifstream input(argv[1]);
+    VLEProject vle_project = read(input);
+
+    write(vle_project, argv[2]);
 
     std::cout << "Conversion succeeded." << std::endl;
 
