@@ -1,3 +1,5 @@
 *.vpz
 *.xml
 *.exe
+*.xmi
+*.xmi~
