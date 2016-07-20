@@ -154,13 +154,21 @@ void write(VLEProject vle_project, const std::string &filename)
     write_xml(filename, pt);
 }
 
-const std::string getModelNameFromID(VLEProject vle_project, 
+const std::string getModelNameFromID(std::vector<Model> submodels, 
                                      const std::string id) 
 {
-    BOOST_FOREACH(Model m, vle_project.model.submodels) {
-        if (id == m.id)
+    BOOST_FOREACH(Model m, submodels) {
+        if (id == m.id) {
             return m.name;
+        } else if (!m.submodels.empty()) {
+            std::string res = getModelNameFromID(m.submodels, id);
+            if (res != "")
+                return res;
+            else
+                continue;
+        }
     }
+
     return "";
 }
 
@@ -216,14 +224,15 @@ VLEProject read(std::istream& is)
                     string senderPath = "UML:Message.sender/UML:ClassifierRole/"
                                         "<xmlattr>/xmi.idref";
                     string origId = mes.second.get(path(senderPath, '/'), "");
-                    con.origin.model = getModelNameFromID(vle_project, origId);
+                    con.origin.model = 
+                        getModelNameFromID(vle_project.model.submodels, origId);
                     con.origin.port = "out";
 
                     string rcvPath = "UML:Message.receiver/UML:ClassifierRole/"
                                      "<xmlattr>/xmi.idref";
                     string destID = mes.second.get(path(rcvPath, '/'), "");
                     con.destination.model = 
-                        getModelNameFromID(vle_project, destID);
+                        getModelNameFromID(vle_project.model.submodels, destID);
                     con.destination.port = "in";
 
                     vle_project.model.connections.push_back(con);
