@@ -11,8 +11,8 @@ struct Port
 
 struct Point
 {
-    std::string model;
-    std::string port;
+    std::string modelName;
+    std::string portName;
 };
 
 struct Connection
@@ -23,7 +23,7 @@ struct Connection
     Point destination;
 };
 
-struct Model 
+struct Model
 {
     std::string id;
     std::string name;
@@ -61,40 +61,46 @@ void write(VLEProject vle_project, const std::string &filename)
     rootNode.put("<xmlattr>.author", "");
     rootNode.put("<xmlattr>.date", vle_project.date);
     rootNode.put("<xmlattr>.version", "1.0");
-    
-    // Structures    
+
+    // Structures
     ptree& structureNode = rootNode.put("structures", "");
     ptree& mainModelNode = structureNode.put("model", "");
     mainModelNode.put("<xmlattr>.name", mainModel.name);
     mainModelNode.put("<xmlattr>.type", "");
     mainModelNode.put("<xmlattr>.dynamics", "");
 
+    // Submodels & Port list
     ptree& submodelNode = mainModelNode.put("submodels", "");
     BOOST_FOREACH(Model submodel, mainModel.submodels) {
         ptree& modelNode = submodelNode.add("model", "");
         modelNode.put("<xmlattr>.name", submodel.name);
 
         ptree& inNode = modelNode.put("in", "");
-        ptree& inPortNode = inNode.add("port", "");
-        inPortNode.put("<xmlattr>.name", "in");
-        
+        BOOST_FOREACH(Port inPort, submodel.inPorts) {
+            ptree& inPortNode = inNode.add("port", "");
+            inPortNode.put("<xmlattr>.name", inPort.name);
+        }
+
         ptree& outNode = modelNode.put("out", "");
-        ptree& outPortNode = outNode.add("port", "");
-        outPortNode.put("<xmlattr>.name", "out");
+        BOOST_FOREACH(Port outPort, submodel.outPorts) {
+            ptree& outPortNode = outNode.add("port", "");
+            outPortNode.put("<xmlattr>.name", outPort.name);
+        }
     }
 
+    // Connections
     ptree& connectionsNode = mainModelNode.put("connections", "");
     BOOST_FOREACH(Connection con, mainModel.connections) {
         ptree& connectionNode = connectionsNode.add("connection", "");
         connectionNode.put("<xmlattr>.type", con.type);
 
         ptree& originNode = connectionNode.put("origin", "");
-        originNode.put("<xmlattr>.model", con.origin.model);
-        originNode.put("<xmlattr>.port", con.origin.port);
+        originNode.put("<xmlattr>.model", con.origin.modelName);
+        originNode.put("<xmlattr>.port", con.origin.portName);
 
         ptree& destNode = connectionNode.put("destination", "");
-        destNode.put("<xmlattr>.model", con.destination.model);
-        destNode.put("<xmlattr>.port", con.destination.port);
+        destNode.put("<xmlattr>.model", con.destination.modelName);
+        destNode.put("<xmlattr>.port", con.destination.portName);
     }
 
     // Experiment
@@ -105,7 +111,7 @@ void write(VLEProject vle_project, const std::string &filename)
     ptree& conditionsNode = experimentNode.put("conditions", "");
     ptree& conditionNode = conditionsNode.put("condition", "");
     conditionNode.put("<xmlattr>.name", "simulation_engine");
-    
+
     ptree& conditionPortNode = conditionNode.add("port", "");
     conditionPortNode.put("<xmlattr>.name", "begin");
     conditionPortNode.put("double", 0.0);
@@ -113,7 +119,7 @@ void write(VLEProject vle_project, const std::string &filename)
     ptree& anotherConditionPortNode = conditionNode.add("port", "");
     anotherConditionPortNode.put("<xmlattr>.name", "duration");
     anotherConditionPortNode.put("double", 1.0);
-    
+
     ptree& viewsNode = experimentNode.add("views.outputs", "");
     ptree& outputNode = viewsNode.add("output", "");
     outputNode.put("<xmlattr>.format", "local");
@@ -154,22 +160,18 @@ void write(VLEProject vle_project, const std::string &filename)
     write_xml(filename, pt);
 }
 
-const std::string getModelNameFromID(std::vector<Model> submodels, 
-                                     const std::string id) 
-{
-    BOOST_FOREACH(Model m, submodels) {
-        if (id == m.id) {
-            return m.name;
-        } else if (!m.submodels.empty()) {
-            std::string res = getModelNameFromID(m.submodels, id);
-            if (res != "")
-                return res;
-            else
-                continue;
-        }
+bool isModelID(const std::string& id, const Model& model) {
+    return model.id == id;
+}
+
+int getModelIndexFromID(std::vector<Model> submodels, const std::string id) {
+    std::vector<Model>::iterator it = find_if(submodels.begin(), submodels.end(),
+                        boost::bind(&isModelID, id, boost::placeholders::_1));
+    if (it != submodels.end()) {
+        return std::distance(submodels.begin(), it);
     }
 
-    return "";
+    return -1;
 }
 
 VLEProject read(std::istream& is)
@@ -177,15 +179,16 @@ VLEProject read(std::istream& is)
     using boost::property_tree::ptree;
     ptree pt;
     read_xml(is, pt);
-    
+
     VLEProject vle_project;
+    Model mainModel = vle_project.model;
 
     BOOST_FOREACH(ptree::value_type const& v, pt.get_child("XMI")) {
         if (v.first == "<xmlattr>") {
             const ptree& root = pt.get_child("XMI");
             vle_project.date = root.get<std::string>("<xmlattr>.timestamp");
         } else if (v.first == "XMI.content") {
-            vle_project.model.name = 
+            mainModel.name =
                 v.second.get<std::string>("UML:Model.<xmlattr>.name");
         }
     }
@@ -198,58 +201,80 @@ VLEProject read(std::istream& is)
     BOOST_FOREACH(ptree::value_type const& elt, eltTree) {
         if (elt.first == "UML:Collaboration") {
             // in sequence or collaboration diagram
-            const ptree& roleTree = 
+            const ptree& roleTree =
                 elt.second.get_child(path("UML:Namespace.ownedElement", '/'));
-            
+
+            // Get submodels
             BOOST_FOREACH(ptree::value_type const& role, roleTree) {
                 if (role.first == "UML:ClassifierRole") {
                     string idPath = "<xmlattr>/xmi.id";
                     Model submodel;
                     submodel.name = role.second.get("<xmlattr>.name", "");
                     submodel.id = role.second.get(path(idPath, '/'), "");
-                    vle_project.model.submodels.push_back(submodel);
+                    mainModel.submodels.push_back(submodel);
                 }
             }
 
+            // Get messages and connections
             string mesPath = "UML:Collaboration.interaction/UML:Interaction/"
                              "UML:Interaction.message";
-            const ptree& mesTree = 
+            const ptree& mesTree =
                 elt.second.get_child(path(mesPath, '/'));
+            Model submodels;
             BOOST_FOREACH(ptree::value_type const& mes, mesTree) {
                 if (mes.first == "UML:Message") {
                     Connection con;
                     con.name = mes.second.get("<xmlattr>.name", "");
-                    con.type = "";
+                    con.type = "internal";
 
                     string senderPath = "UML:Message.sender/UML:ClassifierRole/"
                                         "<xmlattr>/xmi.idref";
-                    string origId = mes.second.get(path(senderPath, '/'), "");
-                    con.origin.model = 
-                        getModelNameFromID(vle_project.model.submodels, origId);
-                    con.origin.port = "out";
+                    string origID = mes.second.get(path(senderPath, '/'), "");
+                    int origIndex = getModelIndexFromID(mainModel.submodels, origID);
+                    if (origIndex == -1) {
+                        cout << "Model ID " << origID << " not found" << endl;
+                        break;
+                    }
+                    Model origModel = mainModel.submodels[origIndex];
+                    con.origin.modelName = origModel.name;
+                    con.origin.portName = con.name + ".out";
+                    Port outPort;
+                    outPort.name = con.origin.portName;
+                    origModel.outPorts.push_back(outPort);
+                    mainModel.submodels[origIndex] = origModel;
 
                     string rcvPath = "UML:Message.receiver/UML:ClassifierRole/"
                                      "<xmlattr>/xmi.idref";
                     string destID = mes.second.get(path(rcvPath, '/'), "");
-                    con.destination.model = 
-                        getModelNameFromID(vle_project.model.submodels, destID);
-                    con.destination.port = "in";
+                    int destIndex = getModelIndexFromID(mainModel.submodels, destID);
+                    if (destIndex == -1) {
+                        cout << "Model ID " << destID << " not found" << endl;
+                        break;
+                    }
+                    Model destModel = mainModel.submodels[destIndex];
+                    con.destination.modelName = destModel.name;
+                    con.destination.portName = con.name + ".in";
+                    Port inPort;
+                    inPort.name = con.destination.portName;
+                    destModel.inPorts.push_back(inPort);
+                    mainModel.submodels[destIndex] = destModel;
 
-                    vle_project.model.connections.push_back(con);
+                    mainModel.connections.push_back(con);
                 }
             }
         }
     }
 
+    vle_project.model = mainModel;
     return vle_project;
 }
 
 int main(int argc, char* argv[])
 {
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " SOURCE_FILE" << 
+        std::cerr << "Usage: " << argv[0] << " SOURCE_FILE" <<
             " DESTINATION_FILE" << std::endl;
-        
+
         return 1;
     }
 
@@ -262,4 +287,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
