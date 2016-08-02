@@ -4,3 +4,5 @@
 *.xmi
 *.xmi~
 *.stackdump
+*.o
+converter
