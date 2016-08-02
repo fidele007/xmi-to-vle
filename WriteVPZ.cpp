@@ -42,6 +42,9 @@ void write(VLEProject vle_project, const std::string &filename)
         }
     }
 
+    // Dynamics
+    mainModelNode.put("dynamics", "");
+
     // Connections
     ptree& connectionsNode = mainModelNode.put("connections", "");
     BOOST_FOREACH(Connection con, mainModel.connections) {

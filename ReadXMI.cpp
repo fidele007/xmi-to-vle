@@ -56,7 +56,7 @@ VLEProject read(std::istream& is)
                 if (mes.first == "UML:Message") {
                     Connection con;
                     con.name = mes.second.get("<xmlattr>.name", "");
-                    con.type = "internal";
+                    con.type = CT_internal;
 
                     string senderPath = "UML:Message.sender/UML:ClassifierRole/"
                                         "<xmlattr>/xmi.idref";
