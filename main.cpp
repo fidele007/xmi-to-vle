@@ -3,24 +3,26 @@
 #include "ReadXMI.hpp"
 #include "WriteVPZ.hpp"
 
+using namespace std;
+
 int main(int argc, char* argv[])
 {
-    if (argc < 3) {
-        std::cerr << "Usage: " 
+    if (argc != 3) {
+        cerr << "Usage: " 
                   << argv[0] 
                   << " SOURCE_FILE" 
                   << " DESTINATION_FILE" 
-                  << std::endl;
+             << endl;
 
         return 1;
     }
 
-    std::ifstream input(argv[1]);
+    ifstream input(argv[1]);
     VLEProject vle_project = read(input);
 
     write(vle_project, argv[2]);
 
-    std::cout << "Conversion succeeded." << std::endl;
+    cout << "Conversion succeeded." << endl;
 
     return 0;
 }
