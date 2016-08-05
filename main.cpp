@@ -1,5 +1,4 @@
 #include "VPZStructure.hpp"
-#include "ModelGetter.hpp"
 #include "ReadXMI.hpp"
 #include "WriteVPZ.hpp"
 
