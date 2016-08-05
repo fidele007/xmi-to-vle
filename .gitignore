@@ -1,4 +1,4 @@
-*.vpz
+*.vpZ
 *.xml
 *.exe
 *.xmi
@@ -6,3 +6,6 @@
 *.stackdump
 *.o
 converter
+test/
+xmi-to-vle.sublime-project
+xmi-to-vle.sublime-workspace
