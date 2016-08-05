@@ -49,7 +49,19 @@ void write(VLEProject vle_project, const std::string &filename)
     ptree& connectionsNode = mainModelNode.put("connections", "");
     BOOST_FOREACH(Connection con, mainModel.connections) {
         ptree& connectionNode = connectionsNode.add("connection", "");
-        connectionNode.put("<xmlattr>.type", con.type);
+        std::string connectionType;
+        switch (con.type) {
+            case CT_input:
+                connectionType = "input";
+                break;
+            case CT_output:
+                connectionType = "output";
+                break;
+            case CT_internal:
+                connectionType = "internal";
+                break;
+        }
+        connectionNode.put("<xmlattr>.type", connectionType);
 
         ptree& originNode = connectionNode.put("origin", "");
         originNode.put("<xmlattr>.model", con.origin.modelName);
