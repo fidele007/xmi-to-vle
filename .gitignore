@@ -1,11 +1,12 @@
-*.vpZ
+*.patch
+*.vpz
 *.xml
 *.exe
 *.xmi
 *.xmi~
 *.stackdump
 *.o
-converter
+xmi2vle
 test/
 xmi-to-vle.sublime-project
 xmi-to-vle.sublime-workspace
