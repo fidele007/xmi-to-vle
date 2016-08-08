@@ -4,7 +4,7 @@ CFLAGS = -g -Wall
 all: converter
 
 converter: ModelGetter.o ReadXMI.o WriteVPZ.o
-	$(CC) $(CFLAGS) -o converter main.cpp ModelGetter.o ReadXMI.o WriteVPZ.o
+	$(CC) $(CFLAGS) -o xmi2vle main.cpp ModelGetter.o ReadXMI.o WriteVPZ.o
 
 ModelGetter.o: ModelGetter.cpp ModelGetter.hpp
 	$(CC) $(CFLAGS) -c ModelGetter.cpp
@@ -16,4 +16,4 @@ WriteVPZ.o: WriteVPZ.cpp WriteVPZ.hpp
 	$(CC) $(CFLAGS) -c WriteVPZ.cpp
 
 clean:
-	$(RM) converter *.o *~
+	$(RM) xmi2vle *.o *~
