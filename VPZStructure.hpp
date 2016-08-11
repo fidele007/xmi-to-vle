@@ -2,6 +2,11 @@
 #include <fstream>
 #include <vector>
 
+enum ModelType {
+    MT_atomic,
+    MT_coupled
+};
+
 enum ConnectionType {
     CT_input,
     CT_output,
@@ -101,7 +106,7 @@ struct Model
 {
     std::string id;
     std::string name;
-    std::string type;
+    ModelType type;
     std::string dynamics;
     std::string conditions;
     std::string observables;
