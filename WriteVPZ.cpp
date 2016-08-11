@@ -3,24 +3,29 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
+#include <ctime>
 
-void write(VLEProject vle_project, const std::string &filename)
+using namespace std;
+
+void write(VLEProject vle_project, const string &filename)
 {
     using boost::property_tree::ptree;
+
     ptree pt;
     Model mainModel = vle_project.model;
 
     // Root
     ptree& rootNode = pt.add("vle_project", "");
     rootNode.put("<xmlattr>.author", "");
-    rootNode.put("<xmlattr>.date", vle_project.date);
+    time_t now = time(0);
+    rootNode.put("<xmlattr>.date", ctime(&now));
     rootNode.put("<xmlattr>.version", "1.0");
 
     // Structures
     ptree& structureNode = rootNode.put("structures", "");
     ptree& mainModelNode = structureNode.put("model", "");
     mainModelNode.put("<xmlattr>.name", mainModel.name);
-    mainModelNode.put("<xmlattr>.type", "");
+    mainModelNode.put("<xmlattr>.type", "coupled");
     mainModelNode.put("<xmlattr>.dynamics", "");
 
     // Submodels & Port list
@@ -28,6 +33,16 @@ void write(VLEProject vle_project, const std::string &filename)
     BOOST_FOREACH(Model submodel, mainModel.submodels) {
         ptree& modelNode = submodelNode.add("model", "");
         modelNode.put("<xmlattr>.name", submodel.name);
+        string modelType;
+        switch (submodel.type) {
+            case MT_atomic:
+                modelType = "atomic";
+                break;
+            case MT_coupled:
+                modelType = "coupled";
+                break;
+        }
+        modelNode.put("<xmlattr>.type", modelType);
 
         ptree& inNode = modelNode.put("in", "");
         BOOST_FOREACH(Port inPort, submodel.inPorts) {
@@ -49,7 +64,7 @@ void write(VLEProject vle_project, const std::string &filename)
     ptree& connectionsNode = mainModelNode.put("connections", "");
     BOOST_FOREACH(Connection con, mainModel.connections) {
         ptree& connectionNode = connectionsNode.add("connection", "");
-        std::string connectionType;
+        string connectionType;
         switch (con.type) {
             case CT_input:
                 connectionType = "input";
