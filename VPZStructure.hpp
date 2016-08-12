@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 
+using namespace std;
+
 enum ModelType {
     MT_atomic,
     MT_coupled
@@ -35,113 +37,113 @@ enum ExperimentCombination {
 
 struct AttachedView 
 {
-    std::string name;
+    string name;
 };
 
 struct Port
 {
-    std::string name;
-    std::vector<AttachedView> attachedViews;
+    string name;
+    vector<AttachedView> attachedViews;
 };
 
 // Common struct for origin and destination
 struct Point
 {
-    std::string modelName;
-    std::string portName;
+    string modelName;
+    string portName;
 };
 
 struct Connection
 {
     ConnectionType type;
-    std::string name;
+    string name;
     Point origin;
     Point destination;
 };
 
 struct View
 {
-    std::string name;
+    string name;
     ViewType type;
-    std::string output;
-    std::string timestep;
+    string output;
+    string timestep;
 };
 
 struct Observable
 {
-    std::string observable;
+    string observable;
 };
 
 struct Output
 {
-    std::string name;
+    string name;
     OutputFormat format;
-    std::string location;
-    std::string package;
-    std::string plugin;
+    string location;
+    string package;
+    string plugin;
 };
 
 struct Views
 {
-    std::vector<Output> outputs;
-    std::vector<Observable> observables;
-    std::vector<View> subviews;
+    vector<Output> outputs;
+    vector<Observable> observables;
+    vector<View> subviews;
 };
 
 struct Condition
 {
-    std::string name;
-    std::vector<Port> ports;
+    string name;
+    vector<Port> ports;
 };
 
 struct Experiment 
 {
-    std::string name;
+    string name;
     ExperimentCombination combination;
-    std::vector<Condition> conditions;
+    vector<Condition> conditions;
     Views views;
 };
 
 struct Model
 {
-    std::string id;
-    std::vector<std::string> idRef;
-    std::string name;
+    string id;
+    vector<string> idRef;
+    string name;
     ModelType type;
-    std::string dynamics;
-    std::string conditions;
-    std::string observables;
-    std::vector<Port> inPorts;
-    std::vector<Port> outPorts;
-    std::vector<Model> submodels;
-    std::vector<Connection> connections;
+    string dynamics;
+    string conditions;
+    string observables;
+    vector<Port> inPorts;
+    vector<Port> outPorts;
+    vector<Model> submodels;
+    vector<Connection> connections;
 };
 
 struct Class
 {
-    std::string name;
+    string name;
     Model model;
 };
 
 struct Dynamic
 {
-    std::string name;
-    std::string library;
-    std::string package;
-    std::string location;
-    std::string type;
-    std::string language;
+    string name;
+    string library;
+    string package;
+    string location;
+    string type;
+    string language;
 };
 
 struct VLEProject
 {
-    std::string date;
-    std::string version;
-    std::string instance;
-    std::string replica;
-    std::string author;
+    string date;
+    string version;
+    string instance;
+    string replica;
+    string author;
     Model model;
-    std::vector<Dynamic> dynamics;
-    std::vector<Class> classes;
+    vector<Dynamic> dynamics;
+    vector<Class> classes;
     Experiment experiment;
 };
