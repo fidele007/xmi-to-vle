@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <map>
 
 using namespace std;
 
@@ -117,6 +118,7 @@ struct Model
     vector<Port> outPorts;
     vector<Model> submodels;
     vector<Connection> connections;
+    map<string, string> taskDuration;
 };
 
 struct Class
