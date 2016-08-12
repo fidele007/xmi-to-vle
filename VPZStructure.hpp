@@ -105,6 +105,7 @@ struct Experiment
 struct Model
 {
     std::string id;
+    std::vector<std::string> idRef;
     std::string name;
     ModelType type;
     std::string dynamics;
