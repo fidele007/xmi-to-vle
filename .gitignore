@@ -10,3 +10,5 @@ xmi2vle
 test/
 xmi-to-vle.sublime-project
 xmi-to-vle.sublime-workspace
+*.dSYM
+.DS_Store
