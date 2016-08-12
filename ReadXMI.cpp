@@ -5,6 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+#include <map>
 
 using namespace std;
 
@@ -23,7 +24,7 @@ vector<string> split(string data, string token)
     return output;
 }
 
-VLEProject read(std::istream& is)
+VLEProject read(istream& is)
 {
     using boost::property_tree::ptree;
 
@@ -77,6 +78,7 @@ VLEProject read(std::istream& is)
                 cout << "Model with IDRef " << origID << " not found" << endl;
                 continue;
             }
+
             Model origModel = mainModel.submodels[origIndex];
             con.origin.modelName = origModel.name;
             con.origin.portName = con.name + ".out";
@@ -101,6 +103,35 @@ VLEProject read(std::istream& is)
             mainModel.submodels[destIndex] = destModel;
 
             mainModel.connections.push_back(con);
+        } else if (child.first == "fragment") {
+            string fragType = child.second.get("<xmlattr>.xmi:type", "");
+            if (fragType != "uml:BehaviorExecutionSpecification")
+                continue;
+
+            BOOST_FOREACH(ptree::value_type const& com, child.second) {
+                if (com.first != "ownedComment")
+                    continue;
+
+                string taskComment = com.second.get("body", "");
+                if (taskComment == "")
+                    continue;
+
+                string modelID = child.second.get<string>("<xmlattr>.covered");
+                int modelInd = getModelIndexFromID(mainModel.submodels, modelID);
+                if (modelInd == -1) {
+                    cout << "Model ID " << modelID << " not found" << endl;
+                    continue;
+                }
+
+                Model taskModel = mainModel.submodels[modelInd];
+                map<string, string> taskDuration = taskModel.taskDuration;
+
+                vector<string> taskVect = split(taskComment, "/time=");
+                taskDuration[taskVect[0]] = taskVect[1];
+                
+                taskModel.taskDuration = taskDuration;
+                mainModel.submodels[modelInd] = taskModel;
+            }
         }
     }
 
