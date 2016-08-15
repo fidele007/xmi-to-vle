@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
     write(vle_project, argv[2]);
 
-    cout << "Conversion succeeded." << endl;
+    cout << "Conversion finished." << endl;
 
     return 0;
 }
