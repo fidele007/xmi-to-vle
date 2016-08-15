@@ -6,33 +6,14 @@
 #include <ctime>
 
 using namespace std;
+using boost::property_tree::ptree;
 
-void write(VLEProject vle_project, const string &filename)
+static void addModels(Model model, ptree& modelNode)
 {
-    using boost::property_tree::ptree;
-
-    ptree pt;
-    Model mainModel = vle_project.model;
-
-    // Root
-    ptree& rootNode = pt.add("vle_project", "");
-    rootNode.put("<xmlattr>.author", "");
-    time_t now = time(0);
-    rootNode.put("<xmlattr>.date", ctime(&now));
-    rootNode.put("<xmlattr>.version", "1.0");
-
-    // Structures
-    ptree& structureNode = rootNode.put("structures", "");
-    ptree& mainModelNode = structureNode.put("model", "");
-    mainModelNode.put("<xmlattr>.name", mainModel.name);
-    mainModelNode.put("<xmlattr>.type", "coupled");
-    mainModelNode.put("<xmlattr>.dynamics", "");
-
-    // Submodels & Port list
-    ptree& submodelNode = mainModelNode.put("submodels", "");
-    BOOST_FOREACH(Model submodel, mainModel.submodels) {
-        ptree& modelNode = submodelNode.add("model", "");
-        modelNode.put("<xmlattr>.name", submodel.name);
+    ptree& submodelNode = modelNode.put("submodels", "");
+    BOOST_FOREACH(Model submodel, model.submodels) {
+        ptree& aModel = submodelNode.add("model", "");
+        aModel.put("<xmlattr>.name", submodel.name);
         string modelType;
         switch (submodel.type) {
             case MT_atomic:
@@ -42,27 +23,28 @@ void write(VLEProject vle_project, const string &filename)
                 modelType = "coupled";
                 break;
         }
-        modelNode.put("<xmlattr>.type", modelType);
+        aModel.put("<xmlattr>.type", modelType);
 
-        ptree& inNode = modelNode.put("in", "");
+        ptree& inNode = aModel.put("in", "");
         BOOST_FOREACH(Port inPort, submodel.inPorts) {
             ptree& inPortNode = inNode.add("port", "");
             inPortNode.put("<xmlattr>.name", inPort.name);
         }
 
-        ptree& outNode = modelNode.put("out", "");
+        ptree& outNode = aModel.put("out", "");
         BOOST_FOREACH(Port outPort, submodel.outPorts) {
             ptree& outPortNode = outNode.add("port", "");
             outPortNode.put("<xmlattr>.name", outPort.name);
         }
+
+        if (!submodel.submodels.empty())
+            addModels(submodel, aModel);
     }
+}
 
-    // Dynamics
-    mainModelNode.put("dynamics", "");
-
-    // Connections
-    ptree& connectionsNode = mainModelNode.put("connections", "");
-    BOOST_FOREACH(Connection con, mainModel.connections) {
+static void addConnections(Model model, ptree& connectionsNode)
+{
+    BOOST_FOREACH(Connection con, model.connections) {
         ptree& connectionNode = connectionsNode.add("connection", "");
         string connectionType;
         switch (con.type) {
@@ -86,6 +68,43 @@ void write(VLEProject vle_project, const string &filename)
         destNode.put("<xmlattr>.model", con.destination.modelName);
         destNode.put("<xmlattr>.port", con.destination.portName);
     }
+    
+    if (model.submodels.empty())
+        return;
+
+    BOOST_FOREACH(Model submodel, model.submodels) {
+        addConnections(submodel, connectionsNode);
+    }
+}
+
+void write(VLEProject vle_project, const string &filename)
+{
+    ptree pt;
+    Model mainModel = vle_project.model;
+
+    // Root
+    ptree& rootNode = pt.add("vle_project", "");
+    rootNode.put("<xmlattr>.author", "");
+    time_t now = time(0);
+    rootNode.put("<xmlattr>.date", ctime(&now));
+    rootNode.put("<xmlattr>.version", "1.0");
+
+    // Structures
+    ptree& structureNode = rootNode.put("structures", "");
+    ptree& mainModelNode = structureNode.put("model", "");
+    mainModelNode.put("<xmlattr>.name", mainModel.name);
+    mainModelNode.put("<xmlattr>.type", "coupled");
+    mainModelNode.put("<xmlattr>.dynamics", "");
+
+    // Submodels & Port list
+    addModels(mainModel, mainModelNode);
+
+    // Dynamics
+    mainModelNode.put("dynamics", "");
+
+    // Connections
+    ptree& connectionsNode = mainModelNode.put("connections", "");
+    addConnections(mainModel, connectionsNode);
 
     // Experiment
     ptree& experimentNode = rootNode.put("experiment", "");
