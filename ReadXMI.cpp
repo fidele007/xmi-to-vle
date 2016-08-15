@@ -5,6 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 #include <map>
 
 using namespace std;
@@ -24,25 +25,35 @@ vector<string> split(string data, string token)
     return output;
 }
 
-VLEProject read(istream& is)
+VLEProject read(string file)
 {
-    VLEProject mainProject;
-    Model mainModel;
+    ifstream input(file);
+    if(input.fail()) {
+        cout << "Can't access " << file << ". Abort." << endl;
+        exit (EXIT_FAILURE);
+    }
+
+    using boost::filesystem::path;
+    path filePath = path(file).parent_path();
 
     using boost::property_tree::ptree;
     ptree pt;
-    read_xml(is, pt);
+    read_xml(input, pt);
+
+    VLEProject mainProject;
+    Model mainModel;
+    
     
     const ptree& root = pt.get_child("uml:Model");
-    mainModel.name = root.get<string>("<xmlattr>.name");
-    mainModel.type = MT_coupled;
-
     const ptree& eltTree = root.get_child("packagedElement");
     string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
     if (diagramType != "uml:Interaction") {
         cout << "XMI is not of a sequence a diagram. Abort." << endl;
         exit (EXIT_FAILURE);
     }
+
+    mainModel.name = eltTree.get<string>("<xmlattr>.name");
+    mainModel.type = MT_coupled;
 
     BOOST_FOREACH(ptree::value_type const& child, eltTree) {
         if (child.first == "lifeline") {
@@ -57,20 +68,25 @@ VLEProject read(istream& is)
                 continue;
             }
 
-            submodel.name = fullModelName.substr(colonPos + 1);
+            string modelName = fullModelName.substr(colonPos + 1);
             string modelType = fullModelName.substr(0, colonPos);
             if (boost::iequals(modelType, "atomic")) {
                 submodel.type = MT_atomic;
             } else if (boost::iequals(modelType, "coupled")) {
                 submodel.type = MT_coupled; //TODO: Go to another XMI
+                path subprojectPath = filePath.append(modelName + ".xmi");
+                VLEProject subproject = read(subprojectPath.string());
+                submodel = subproject.model;
             } else {
                 cout << "Type of model "
-                     << submodel.name 
+                     << modelName
                      << " is incorrect." 
                      << endl;
+
                 continue;
             }
 
+            submodel.name = modelName;
             submodel.id = child.second.get<string>("<xmlattr>.xmi:id");
             string idRef = child.second.get<string>("<xmlattr>.coveredBy");
             submodel.idRef = split(idRef, " ");

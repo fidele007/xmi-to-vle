@@ -1,1 +1,1 @@
-VLEProject read(std::istream& is);
+VLEProject read(std::string is);

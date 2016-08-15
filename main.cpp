@@ -16,8 +16,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    ifstream input(argv[1]);
-    VLEProject vle_project = read(input);
+    VLEProject vle_project = read(argv[1]);
 
     write(vle_project, argv[2]);
 
