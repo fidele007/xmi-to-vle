@@ -26,13 +26,12 @@ vector<string> split(string data, string token)
 
 VLEProject read(istream& is)
 {
-    using boost::property_tree::ptree;
+    VLEProject mainProject;
+    Model mainModel;
 
+    using boost::property_tree::ptree;
     ptree pt;
     read_xml(is, pt);
-
-    VLEProject vle_project;
-    Model mainModel = vle_project.model;
     
     const ptree& root = pt.get_child("uml:Model");
     mainModel.name = root.get<string>("<xmlattr>.name");
@@ -50,18 +49,28 @@ VLEProject read(istream& is)
             Model submodel;
             string fullModelName = child.second.get<string>("<xmlattr>.name");
             size_t colonPos = fullModelName.find(":");
-            if (colonPos == string::npos)
+            if (colonPos == string::npos) {
+                cout << "Type of model "
+                     << fullModelName 
+                     << " is not specified." 
+                     << endl;
                 continue;
-
-            string modelType = fullModelName.substr(0, colonPos);
-            if (boost::iequals(modelType, "atomic"))
-                submodel.type = MT_atomic;
-            else if (boost::iequals(modelType, "coupled"))
-                submodel.type = MT_coupled; //TODO: Go to another XMI
-            else
-                continue;
+            }
 
             submodel.name = fullModelName.substr(colonPos + 1);
+            string modelType = fullModelName.substr(0, colonPos);
+            if (boost::iequals(modelType, "atomic")) {
+                submodel.type = MT_atomic;
+            } else if (boost::iequals(modelType, "coupled")) {
+                submodel.type = MT_coupled; //TODO: Go to another XMI
+            } else {
+                cout << "Type of model "
+                     << submodel.name 
+                     << " is incorrect." 
+                     << endl;
+                continue;
+            }
+
             submodel.id = child.second.get<string>("<xmlattr>.xmi:id");
             string idRef = child.second.get<string>("<xmlattr>.coveredBy");
             submodel.idRef = split(idRef, " ");
@@ -135,6 +144,6 @@ VLEProject read(istream& is)
         }
     }
 
-    vle_project.model = mainModel;
-    return vle_project;
+    mainProject.model = mainModel;
+    return mainProject;
 }
