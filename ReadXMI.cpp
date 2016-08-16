@@ -6,11 +6,10 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include <map>
 
 using namespace std;
 
-vector<string> split(string data, string token)
+static vector<string> split(string data, string token)
 {
     vector<string> output;
     size_t pos = string::npos;
@@ -25,9 +24,9 @@ vector<string> split(string data, string token)
     return output;
 }
 
-VLEProject read(string file)
+VLEProject read(const string file)
 {
-    ifstream input(file);
+    ifstream input(file.c_str());
     if(input.fail()) {
         cout << "Can't access " << file << ". Abort." << endl;
         exit (EXIT_FAILURE);
@@ -43,19 +42,18 @@ VLEProject read(string file)
     VLEProject mainProject;
     Model mainModel;
     
-    
-    const ptree& root = pt.get_child("uml:Model");
-    const ptree& eltTree = root.get_child("packagedElement");
-    string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
+    const ptree &root = pt.get_child("uml:Model");
+    const ptree &eltTree = root.get_child("packagedElement");
+    const string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
     if (diagramType != "uml:Interaction") {
-        cout << "XMI is not of a sequence a diagram. Abort." << endl;
+        cout << "XMI is not of a sequence diagram. Abort." << endl;
         exit (EXIT_FAILURE);
     }
 
     mainModel.name = eltTree.get<string>("<xmlattr>.name");
     mainModel.type = MT_coupled;
 
-    BOOST_FOREACH(ptree::value_type const& child, eltTree) {
+    BOOST_FOREACH(const ptree::value_type &child, eltTree) {
         if (child.first == "lifeline") {
             Model submodel;
             string fullModelName = child.second.get<string>("<xmlattr>.name");
@@ -133,7 +131,7 @@ VLEProject read(string file)
             if (fragType != "uml:BehaviorExecutionSpecification")
                 continue;
 
-            BOOST_FOREACH(ptree::value_type const& com, child.second) {
+            BOOST_FOREACH(const ptree::value_type &com, child.second) {
                 if (com.first != "ownedComment")
                     continue;
 
