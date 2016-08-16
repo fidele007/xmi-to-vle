@@ -1,10 +1,11 @@
 CC = g++
 CFLAGS = -g -Wall
+LDFLAGS = -lboost_filesystem -lboost_system
 
 all: converter
 
 converter: ModelGetter.o ReadXMI.o WriteVPZ.o
-	$(CC) $(CFLAGS) -lboost_filesystem -lboost_system -o xmi2vle main.cpp ModelGetter.o ReadXMI.o WriteVPZ.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o xmi2vle main.cpp ModelGetter.o ReadXMI.o WriteVPZ.o
 
 ModelGetter.o: ModelGetter.cpp ModelGetter.hpp
 	$(CC) $(CFLAGS) -c ModelGetter.cpp
