@@ -6,12 +6,12 @@
 
 using namespace std;
 
-bool isModelID(const string& id, const Model& model) 
+static const bool isModelID(const string &id, const Model &model) 
 {
     return model.id == id;
 }
 
-int getModelIndexFromID(vector<Model> submodels, const string id)
+const int getModelIndexFromID(vector<Model> submodels, const string id)
 {
     vector<Model>::iterator it = find_if(submodels.begin(), submodels.end(),
                                          boost::bind(&isModelID, id, _1));
@@ -21,9 +21,9 @@ int getModelIndexFromID(vector<Model> submodels, const string id)
     return -1;
 }
 
-bool isModelIDRef(const string& idRef, const Model& model) 
+static const bool isModelIDRef(const string &idRef, const Model &model) 
 {
-    BOOST_FOREACH(const string& id, model.idRef) {
+    BOOST_FOREACH(const string &id, model.idRef) {
         if (id == idRef)
             return true;
     }
@@ -31,7 +31,7 @@ bool isModelIDRef(const string& idRef, const Model& model)
     return false;
 }
 
-int getModelIndexFromIDRef(vector<Model> submodels, const string idRef) 
+const int getModelIndexFromIDRef(vector<Model> submodels, const string idRef) 
 {
     vector<Model>::iterator it = find_if(submodels.begin(), submodels.end(),
                                          boost::bind(&isModelIDRef, idRef, _1));
