@@ -24,12 +24,25 @@ static vector<string> split(string data, string token)
     return output;
 }
 
-VLEProject read(const string file)
+VLEProject readXMI(const string file, const bool isBaseXMI)
 {
+    VLEProject mainProject;
+
     ifstream input(file.c_str());
     if(input.fail()) {
-        cout << "Can't access " << file << ". Abort." << endl;
-        exit (EXIT_FAILURE);
+        if (isBaseXMI) {
+            cout << "ERROR: Can't access " 
+                << file 
+                << ". Abort." 
+                << endl;
+            exit (EXIT_FAILURE);
+        } else {
+            cout << "WARNING: Can't access " 
+                 << file 
+                 << ". File is skipped." 
+                 << endl;
+            return mainProject;
+        }
     }
 
     using boost::filesystem::path;
@@ -39,15 +52,27 @@ VLEProject read(const string file)
     ptree pt;
     read_xml(input, pt);
 
-    VLEProject mainProject;
     Model mainModel;
     
     const ptree &root = pt.get_child("uml:Model");
     const ptree &eltTree = root.get_child("packagedElement");
     const string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
     if (diagramType != "uml:Interaction") {
-        cout << "XMI is not of a sequence diagram. Abort." << endl;
-        exit (EXIT_FAILURE);
+        if (isBaseXMI) {
+            cout << "ERROR: " 
+                 << file 
+                 << " is not of a sequence diagram."
+                 << " Abort."
+                 << endl;
+            exit (EXIT_FAILURE);
+        } else {
+            cout << "WARNING: " 
+                 << file 
+                 << " is not of a sequence diagram."
+                 << " File is skipped." 
+                 << endl;
+            return mainProject;
+        }
     }
 
     mainModel.name = eltTree.get<string>("<xmlattr>.name");
@@ -59,11 +84,12 @@ VLEProject read(const string file)
             string fullModelName = child.second.get<string>("<xmlattr>.name");
             size_t colonPos = fullModelName.find(":");
             if (colonPos == string::npos) {
-                cout << "Type of model "
+                cout << "WARNING: Type of model "
                      << fullModelName 
-                     << " is not specified." 
+                     << " is not specified. Model's name in UML must follow"
+                     << " the form MODEL_TYPE:MODEL_NAME. Model is skipped."
                      << endl;
-                continue;
+                continue;                
             }
 
             string modelName = fullModelName.substr(colonPos + 1);
@@ -71,17 +97,19 @@ VLEProject read(const string file)
             if (boost::iequals(modelType, "atomic")) {
                 submodel.type = MT_atomic;
             } else if (boost::iequals(modelType, "coupled")) {
-                submodel.type = MT_coupled; //TODO: Go to another XMI
+                submodel.type = MT_coupled;
                 path subprojectPath = filePath.append(modelName + ".xmi");
-                VLEProject subproject = read(subprojectPath.string());
+                VLEProject subproject = readXMI(subprojectPath.string(), false);
                 submodel = subproject.model;
             } else {
-                cout << "Type of model "
+                cout << "WARNING: Type of model "
                      << modelName
-                     << " is incorrect." 
+                     << " is incorrect. Model's name in UML must follow"
+                     << " the form MODEL_TYPE:MODEL_NAME. Model's type is set"
+                     << " to \"atomic\" by default."
                      << endl;
 
-                continue;
+                submodel.type = MT_atomic;
             }
 
             submodel.name = modelName;
@@ -98,7 +126,11 @@ VLEProject read(const string file)
             string origID = child.second.get<string>("<xmlattr>.sendEvent");
             int origIndex = getModelIndexFromIDRef(mainModel.submodels, origID);
             if (origIndex == -1) {
-                cout << "Model with IDRef " << origID << " not found" << endl;
+                cout << "WARNING: Model with reference ID " 
+                     << origID 
+                     << " not found. Origin model is skipped." 
+                     << endl;
+
                 continue;
             }
 
@@ -113,7 +145,11 @@ VLEProject read(const string file)
             string destID = child.second.get<string>("<xmlattr>.receiveEvent");
             int destIndex = getModelIndexFromIDRef(mainModel.submodels, destID);
             if (destIndex == -1) {
-                cout << "Model with IDRef " << destID << " not found" << endl;
+                cout << "WARNING: Model with reference ID " 
+                     << destID 
+                     << " not found. Destination model is skipped."
+                     << endl;
+
                 continue;
             }
 
@@ -142,7 +178,11 @@ VLEProject read(const string file)
                 string modelID = child.second.get<string>("<xmlattr>.covered");
                 int modelInd = getModelIndexFromID(mainModel.submodels, modelID);
                 if (modelInd == -1) {
-                    cout << "Model ID " << modelID << " not found" << endl;
+                    cout << "WARNING: Model with ID "
+                         << modelID
+                         << " not found. Task is skipped."
+                         << endl;
+
                     continue;
                 }
 
