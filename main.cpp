@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    VLEProject vle_project = read(argv[1], true);
+    VLEProject vle_project = readXMI(argv[1], true);
 
-    write(vle_project, argv[2]);
+    writeVPZ(vle_project, argv[2]);
 
     cout << "Conversion finished." << endl;
 
