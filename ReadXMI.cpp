@@ -77,6 +77,9 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
 
     mainModel.name = eltTree.get<string>("<xmlattr>.name");
     mainModel.type = MT_coupled;
+    
+    // This is for automatically naming connections with no name
+    int conCount = 0; 
 
     BOOST_FOREACH(const ptree::value_type &child, eltTree) {
         if (child.first == "lifeline") {
@@ -121,6 +124,11 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
         } else if (child.first == "message") {
             Connection con;
             con.name = child.second.get("<xmlattr>.name", "");
+            if (con.name.empty()) {
+                // TODO: Automically add connection names
+                conCount++;
+                con.name = "p0rt" + to_string(conCount);
+            }
             con.type = CT_internal;
 
             string origID = child.second.get<string>("<xmlattr>.sendEvent");
