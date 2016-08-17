@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    VLEProject vle_project = read(argv[1]);
+    VLEProject vle_project = read(argv[1], true);
 
     write(vle_project, argv[2]);
 

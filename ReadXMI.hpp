@@ -1,1 +1,1 @@
-VLEProject read(std::string is);
+VLEProject readXMI(const std::string is, const bool isBaseXMI);

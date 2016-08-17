@@ -153,7 +153,7 @@ static void addStructures(const Model mainModel, ptree &rootNode)
     addModels(mainModel, mainModelNode);
 }
 
-void write(VLEProject project, const string &filename)
+void writeVPZ(VLEProject project, const string &filename)
 {
     ptree pt;
     const Model mainModel = project.model;
