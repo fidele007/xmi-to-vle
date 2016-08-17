@@ -180,7 +180,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                     continue;
 
                 string taskComment = com.second.get("body", "");
-                if (taskComment == "")
+                if (taskComment.empty())
                     continue;
 
                 string modelID = child.second.get<string>("<xmlattr>.covered");
