@@ -1,0 +1,30 @@
+.\" Manpage for xmi2vvle
+.\" Contact forcefidele@gmail.com to correct errors or typos.
+.TH man 1 "18 August 2016" "1.0" "xmi2vle man page"
+
+.SH NAME:
+xmi2vle \- read XMI file(s), convert them to VPZ usable by VLE and generate initial project CPP files.
+
+.SH SYNOPSIS
+.B xmi2vle
+[\fISOURCE_FILE\fR] [\fIDESTINATION_FILE\fR]
+
+.SH DESCRIPTION
+.B xmi2vle 
+reads an input XMI file of a sequence diagram, translate them into another XMI format called VPZ and generate initial CPP files to be used in VLE project. As such, the XMI must be that of a sequence diagram. The preferred UML tool is 
+.B Modelio 
+which is free and open-source (\fIhttps://www.modelio.org\fR). For best compatibility, use Modelio to export UML diagrams into an XMI file following 
+.B OMG UML2.4.1 
+standards (please refrain from using EMF UML3.0.0 which is Eclipse Modeling Framework).
+
+In Modelio, refer to the following rules when creating a sequence diagram:
+
+.RS
+.IP \[bu] 2
+Model names should be under the form MODEL_TYPE:MODEL_NAME. For example, Atomic:MODEL_NAME or Coupled:MODEL_NAME    
+.IP \[bu] 
+Task name should be a Note in which the message is under the form TASK_NAME/time=TASK_TIME. For example, Execute/time=12.
+.RE
+
+.SH AUTHOR
+Force Fidele KIEN (forcefidele@gmail.com)
