@@ -31,13 +31,13 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
     ifstream input(file.c_str());
     if(input.fail()) {
         if (isBaseXMI) {
-            cout << "ERROR: Can't access " 
+            cerr << "ERROR: Can't access " 
                 << file 
                 << ". Abort." 
                 << endl;
             exit (EXIT_FAILURE);
         } else {
-            cout << "WARNING: Can't access " 
+            cerr << "WARNING: Can't access " 
                  << file 
                  << ". File is skipped." 
                  << endl;
@@ -59,14 +59,14 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
     const string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
     if (diagramType != "uml:Interaction") {
         if (isBaseXMI) {
-            cout << "ERROR: " 
+            cerr << "ERROR: " 
                  << file 
                  << " is not of a sequence diagram."
                  << " Abort."
                  << endl;
             exit (EXIT_FAILURE);
         } else {
-            cout << "WARNING: " 
+            cerr << "WARNING: " 
                  << file 
                  << " is not of a sequence diagram."
                  << " File is skipped." 
@@ -87,7 +87,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
             string fullModelName = child.second.get<string>("<xmlattr>.name");
             size_t colonPos = fullModelName.find(":");
             if (colonPos == string::npos) {
-                cout << "WARNING: Type of model "
+                cerr << "WARNING: Type of model "
                      << fullModelName 
                      << " is not specified. Model's name in UML must follow"
                      << " the form MODEL_TYPE:MODEL_NAME. Model is skipped."
@@ -105,7 +105,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                 VLEProject subproject = readXMI(subprojectPath.string(), false);
                 submodel = subproject.model;
             } else {
-                cout << "WARNING: Type of model "
+                cerr << "WARNING: Type of model "
                      << modelName
                      << " is incorrect. Model's name in UML must follow"
                      << " the form MODEL_TYPE:MODEL_NAME. Model's type is set"
@@ -134,7 +134,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
             string origID = child.second.get<string>("<xmlattr>.sendEvent");
             int origIndex = getModelIndexFromIDRef(mainModel.submodels, origID);
             if (origIndex == -1) {
-                cout << "WARNING: Model with reference ID " 
+                cerr << "WARNING: Model with reference ID " 
                      << origID 
                      << " not found. Origin model is skipped." 
                      << endl;
@@ -153,7 +153,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
             string destID = child.second.get<string>("<xmlattr>.receiveEvent");
             int destIndex = getModelIndexFromIDRef(mainModel.submodels, destID);
             if (destIndex == -1) {
-                cout << "WARNING: Model with reference ID " 
+                cerr << "WARNING: Model with reference ID " 
                      << destID 
                      << " not found. Destination model is skipped."
                      << endl;
@@ -186,7 +186,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                 string modelID = child.second.get<string>("<xmlattr>.covered");
                 int modelInd = getModelIndexFromID(mainModel.submodels, modelID);
                 if (modelInd == -1) {
-                    cout << "WARNING: Model with ID "
+                    cerr << "WARNING: Model with ID "
                          << modelID
                          << " not found. Task is skipped."
                          << endl;
