@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -std=c++11
 LDFLAGS = -lboost_filesystem -lboost_system
 
 all: converter
