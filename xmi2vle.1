@@ -13,17 +13,40 @@ xmi2vle \- read XMI file(s), convert them to VPZ usable by VLE and generate init
 .B xmi2vle 
 reads an input XMI file of a sequence diagram, translate them into another XMI format called VPZ and generate initial CPP files to be used in VLE project. As such, the XMI must be that of a sequence diagram. The preferred UML tool is 
 .B Modelio 
-which is free and open-source (\fIhttps://www.modelio.org\fR). For best compatibility, use Modelio to export UML diagrams into an XMI file following 
+which is free and open-source (\fIhttps://www.modelio.org\fR). For the best compatibility, use Modelio to export UML diagrams into an XMI file following 
 .B OMG UML2.4.1 
-standards (please refrain from using EMF UML3.0.0 which is Eclipse Modeling Framework).
+standards (please refrain from using 
+.B EMF UML3.0.0 
+which is Eclipse Modeling Framework).
 
 In Modelio, refer to the following rules when creating a sequence diagram:
 
 .RS
-.IP \[bu] 2
-Model names should be under the form MODEL_TYPE:MODEL_NAME. For example, Atomic:MODEL_NAME or Coupled:MODEL_NAME    
+
+.IP \[bu] 3
+.B xmi2vle 
+only reads a single XMI file at a time, so the generated XMI should contain the main model followed by its coupled models. In 
+.BR Modelio , 
+multiple sequence diagrams can be created under the same project directory.
+.B xmi2vle 
+takes the first diagram as the main model.
+
+.IP \[bu]
+Model names should be under the form 
+.B MODEL_TYPE:MODEL_NAME
+of which the 
+.B MODEL_TYPE 
+can be 
+.B Atomic 
+or
+.BR Coupled . 
+Examples: Atomic:Host, Coupled:Server, etc.    
+
 .IP \[bu] 
-Task name should be a Note in which the message is under the form TASK_NAME/time=TASK_TIME. For example, Execute/time=12.
+State and ta (time advance of the state) should be a plain text Note in which the message is under the form 
+.BR STATE_NAME/time=STATE_TIME . 
+For example, Execute/time=12.
+
 .RE
 
 .SH AUTHOR
