@@ -4,8 +4,6 @@
 #include <boost/bind.hpp>
 #include <boost/foreach.hpp>
 
-using namespace std;
-
 static const bool isModelID(const string &id, const Model &model) 
 {
     return model.id == id;
@@ -39,4 +37,19 @@ const int getModelIndexFromIDRef(vector<Model> submodels, const string idRef)
         return distance(submodels.begin(), it);
 
     return -1;
+}
+
+static const bool isModelName(const string &modelName, const ptree &model)
+{
+    return model.get("<xmlattr>.name", "") == modelName;
+}
+
+const int getCoupledModelIndex(vector<ptree> allModels, const string modelName)
+{
+    vector<ptree>::iterator it = find_if(allModels.begin(), allModels.end(),
+                                         boost::bind(&isModelName, modelName, _1));
+    if (it != allModels.end())
+        return distance(allModels.begin(), it);
+
+    return -1; 
 }
