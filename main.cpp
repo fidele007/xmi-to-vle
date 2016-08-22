@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    VLEProject vle_project = readXMI(argv[1], true);
+    VLEProject vle_project = readXMI(argv[1]);
 
     writeVPZ(vle_project, argv[2]);
 
