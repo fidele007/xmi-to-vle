@@ -8,6 +8,7 @@
 #include <boost/filesystem.hpp>
 
 using namespace std;
+using boost::property_tree::ptree;
 
 static vector<string> split(string data, string token)
 {
@@ -24,64 +25,37 @@ static vector<string> split(string data, string token)
     return output;
 }
 
-VLEProject readXMI(const string file, const bool isBaseXMI)
+static Model readModel(const ptree &modelTree, 
+                       const vector<ptree> allModels,
+                       const bool isMainModel)
 {
-    VLEProject mainProject;
+    Model model;
+    model.name = modelTree.get<string>("<xmlattr>.name");
+    model.type = MT_coupled;
 
-    ifstream input(file.c_str());
-    if(input.fail()) {
-        if (isBaseXMI) {
-            cerr << "ERROR: Can't access " 
-                << file 
-                << ". Abort." 
-                << endl;
-            exit (EXIT_FAILURE);
-        } else {
-            cerr << "WARNING: Can't access " 
-                 << file 
-                 << ". File is skipped." 
-                 << endl;
-            return mainProject;
-        }
-    }
-
-    using boost::filesystem::path;
-    path filePath = path(file).parent_path();
-
-    using boost::property_tree::ptree;
-    ptree pt;
-    read_xml(input, pt);
-
-    Model mainModel;
-    
-    const ptree &root = pt.get_child("uml:Model");
-    const ptree &eltTree = root.get_child("packagedElement");
-    const string diagramType = eltTree.get<string>("<xmlattr>.xmi:type");
+    const string diagramType = modelTree.get<string>("<xmlattr>.xmi:type");
     if (diagramType != "uml:Interaction") {
-        if (isBaseXMI) {
-            cerr << "ERROR: " 
-                 << file 
+        if (isMainModel) {
+            cerr << "ERROR: Model " 
+                 << model.name 
                  << " is not of a sequence diagram."
                  << " Abort."
                  << endl;
             exit (EXIT_FAILURE);
         } else {
             cerr << "WARNING: " 
-                 << file 
+                 << model.name
                  << " is not of a sequence diagram."
                  << " File is skipped." 
                  << endl;
-            return mainProject;
+            return model;
         }
     }
-
-    mainModel.name = eltTree.get<string>("<xmlattr>.name");
-    mainModel.type = MT_coupled;
     
     // This is for automatically naming connections with no name
     int conCount = 0; 
 
-    BOOST_FOREACH(const ptree::value_type &child, eltTree) {
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
         if (child.first == "lifeline") {
             Model submodel;
             string fullModelName = child.second.get<string>("<xmlattr>.name");
@@ -101,9 +75,17 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                 submodel.type = MT_atomic;
             } else if (boost::iequals(modelType, "coupled")) {
                 submodel.type = MT_coupled;
-                path subprojectPath = filePath.append(modelName + ".xmi");
-                VLEProject subproject = readXMI(subprojectPath.string(), false);
-                submodel = subproject.model;
+                int submodelIndex = getCoupledModelIndex(allModels, modelName);
+                if (submodelIndex == -1) {
+                    cerr << "WARNING: Submodels of coupled model "
+                         << modelName
+                         << " not found and are therefore skipped."
+                         << endl;
+                } else {
+                    submodel = readModel(allModels[submodelIndex], 
+                                         allModels, 
+                                         false);
+                }
             } else {
                 cerr << "WARNING: Type of model "
                      << modelName
@@ -120,7 +102,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
             string idRef = child.second.get<string>("<xmlattr>.coveredBy");
             submodel.idRef = split(idRef, " ");
 
-            mainModel.submodels.push_back(submodel);
+            model.submodels.push_back(submodel);
         } else if (child.first == "message") {
             Connection con;
             con.name = child.second.get("<xmlattr>.name", "");
@@ -132,7 +114,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
             con.type = CT_internal;
 
             string origID = child.second.get<string>("<xmlattr>.sendEvent");
-            int origIndex = getModelIndexFromIDRef(mainModel.submodels, origID);
+            int origIndex = getModelIndexFromIDRef(model.submodels, origID);
             if (origIndex == -1) {
                 cerr << "WARNING: Model with reference ID " 
                      << origID 
@@ -142,16 +124,16 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                 continue;
             }
 
-            Model origModel = mainModel.submodels[origIndex];
+            Model origModel = model.submodels[origIndex];
             con.origin.modelName = origModel.name;
             con.origin.portName = con.name + ".out";
             Port outPort;
             outPort.name = con.origin.portName;
             origModel.outPorts.push_back(outPort);
-            mainModel.submodels[origIndex] = origModel;
+            model.submodels[origIndex] = origModel;
 
             string destID = child.second.get<string>("<xmlattr>.receiveEvent");
-            int destIndex = getModelIndexFromIDRef(mainModel.submodels, destID);
+            int destIndex = getModelIndexFromIDRef(model.submodels, destID);
             if (destIndex == -1) {
                 cerr << "WARNING: Model with reference ID " 
                      << destID 
@@ -161,15 +143,15 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                 continue;
             }
 
-            Model destModel = mainModel.submodels[destIndex];
+            Model destModel = model.submodels[destIndex];
             con.destination.modelName = destModel.name;
             con.destination.portName = con.name + ".in";
             Port inPort;
             inPort.name = con.destination.portName;
             destModel.inPorts.push_back(inPort);
-            mainModel.submodels[destIndex] = destModel;
+            model.submodels[destIndex] = destModel;
 
-            mainModel.connections.push_back(con);
+            model.connections.push_back(con);
         } else if (child.first == "fragment") {
             string fragType = child.second.get("<xmlattr>.xmi:type", "");
             if (fragType != "uml:BehaviorExecutionSpecification")
@@ -184,7 +166,7 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                     continue;
 
                 string modelID = child.second.get<string>("<xmlattr>.covered");
-                int modelInd = getModelIndexFromID(mainModel.submodels, modelID);
+                int modelInd = getModelIndexFromID(model.submodels, modelID);
                 if (modelInd == -1) {
                     cerr << "WARNING: Model with ID "
                          << modelID
@@ -194,18 +176,48 @@ VLEProject readXMI(const string file, const bool isBaseXMI)
                     continue;
                 }
 
-                Model taskModel = mainModel.submodels[modelInd];
+                Model taskModel = model.submodels[modelInd];
                 map<string, string> taskDuration = taskModel.taskDuration;
 
                 vector<string> taskVect = split(taskComment, "/time=");
                 taskDuration[taskVect[0]] = taskVect[1];
                 
                 taskModel.taskDuration = taskDuration;
-                mainModel.submodels[modelInd] = taskModel;
+                model.submodels[modelInd] = taskModel;
             }
         }
     }
 
-    mainProject.model = mainModel;
+    return model;
+}
+
+VLEProject readXMI(const string file)
+{
+    VLEProject mainProject;
+
+    ifstream input(file.c_str());
+    if(input.fail()) {
+        cerr << "ERROR: Can't access " 
+            << file 
+            << ". Abort." 
+            << endl;
+        exit (EXIT_FAILURE);
+    }
+
+    using boost::filesystem::path;
+    path filePath = path(file).parent_path();
+
+    ptree pt;
+    read_xml(input, pt);
+
+    const ptree &root = pt.get_child("uml:Model");
+    vector<ptree> coupledModels;
+    BOOST_FOREACH(const ptree::value_type &rootNode, root) {
+        if (rootNode.first == "packagedElement") {
+            coupledModels.push_back(rootNode.second);
+        }
+    }
+
+    mainProject.model = readModel(coupledModels[0], coupledModels, true);
     return mainProject;
 }
