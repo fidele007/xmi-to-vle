@@ -4,7 +4,9 @@ This tool aims to facilitate the transformation of UML diagrams (Sequence Diagra
 ## Requirements
 * boost
 * c++ compiler
+
 ---
+
 ## Manual
 ### Synopsis
 ./xmi2vle [SOURCE_FILE] [DESTINATION_FILE]
