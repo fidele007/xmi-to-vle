@@ -2,6 +2,7 @@
 #include "WriteCPP.hpp"
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
 using boost::filesystem::path;
@@ -15,7 +16,10 @@ static void writeModelToCPP(string fileContent,
         path coupledModelPath = srcPath;
         coupledModelPath = coupledModelPath.append(model.name + ".cpp");
         ofstream coupledOut(coupledModelPath.string());
-        coupledOut << fileContent;
+        string modelContent = boost::replace_all_copy(fileContent,
+                                                      "Simple",
+                                                      model.name);
+        coupledOut << modelContent;
         coupledOut.close();
     }
 
@@ -23,7 +27,10 @@ static void writeModelToCPP(string fileContent,
         path submodelPath = srcPath;
         submodelPath = submodelPath.append(submodel.name + ".cpp");
         std::ofstream out(submodelPath.string());
-        out << fileContent;
+        string submodelContent = boost::replace_all_copy(fileContent,
+                                                         "Simple",
+                                                         submodel.name);
+        out << submodelContent;
         out.close();
 
         if (!submodel.submodels.empty()) {
