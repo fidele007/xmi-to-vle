@@ -9,7 +9,7 @@ This tool aims to facilitate the transformation of UML diagrams (Sequence Diagra
 
 ## Manual
 ### Synopsis
-./xmi2vle [SOURCE_FILE] [DESTINATION_FILE]
+./xmi2vle [SOURCE_FILE] [PROJECT_DIRECTORY]
 
 ### Description
 **xmi2vle** reads an input XMI file of a sequence diagram, translate them into another XMI format called VPZ, and generate initial CPP files to be used in a [VLE](https://github.com/vle-forge/vle) Project. The original XMI must be that of a sequence diagram. The preferred UML tool to generate XMI is **Modelio** which is free and open-source. Modelio can be downloaded at [this link](https://modelio.org). For best compatibility, use Modelio to export diagrams in XMI format following **OMG UML2.4.1 standards** and not **EMF UML3.0.0** of Eclipse Modeling Framework.

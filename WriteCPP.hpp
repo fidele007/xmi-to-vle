@@ -1,0 +1,1 @@
+void writeCPP(VLEProject project, const std::string &dirName);

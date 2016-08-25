@@ -4,6 +4,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
 #include <ctime>
+#include <boost/filesystem.hpp>
 
 using namespace std;
 using boost::property_tree::ptree;
@@ -153,7 +154,7 @@ static void addStructures(const Model mainModel, ptree &rootNode)
     addModels(mainModel, mainModelNode);
 }
 
-void writeVPZ(VLEProject project, const string &filename)
+void writeVPZ(VLEProject project, const string &dirName)
 {
     ptree pt;
     const Model mainModel = project.model;
@@ -170,5 +171,11 @@ void writeVPZ(VLEProject project, const string &filename)
     addClasses(rootNode);
     addExperiment(rootNode);
 
-    write_xml(filename, pt);
+    using boost::filesystem::path;
+    path expPath = path(dirName).append("exp");
+    if (!is_directory(expPath))
+        create_directory(expPath);
+
+    path vpzPath = expPath.append("empty.vpz");
+    write_xml(vpzPath.string(), pt);
 }
