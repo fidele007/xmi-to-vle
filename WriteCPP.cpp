@@ -19,6 +19,26 @@ static void writeModelToCPP(string fileContent,
         string submodelContent = boost::replace_all_copy(fileContent,
                                                          "Simple",
                                                          submodel.name);
+        string sigmaFunc;
+        map<string, string> taskMap = submodel.taskDuration;
+        if (!taskMap.empty()) {
+            sigmaFunc.append("if (phase_is(\"");
+            sigmaFunc.append(taskMap.begin()->first);
+            sigmaFunc.append("\") { return ");
+            sigmaFunc.append(taskMap.begin()->second);
+            sigmaFunc.append("; } ");
+
+            map<string, string>::iterator it;
+            for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+                sigmaFunc.append("else if (phase_is(\"");
+                sigmaFunc.append(it->first);
+                sigmaFunc.append("\") { return ");
+                sigmaFunc.append(it->second);
+                sigmaFunc.append("; }");
+            }
+            cout << submodel.name << ":\n" << sigmaFunc << endl;
+        }
+
         out << submodelContent;
         out.close();
 
