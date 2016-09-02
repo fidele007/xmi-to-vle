@@ -105,6 +105,7 @@ static Model readModel(const ptree &modelTree,
             model.submodels.push_back(submodel);
         } else if (child.first == "message") {
             Connection con;
+            con.id = child.second.get<string>("<xmlattr>.xmi:id");
             con.name = child.second.get("<xmlattr>.name", "");
             if (con.name.empty()) {
                 // TODO: Automically add connection names
@@ -154,8 +155,38 @@ static Model readModel(const ptree &modelTree,
             model.connections.push_back(con);
         } else if (child.first == "fragment") {
             string fragType = child.second.get("<xmlattr>.xmi:type", "");
-            if (fragType != "uml:BehaviorExecutionSpecification")
+
+            if (fragType == "uml:CombinedFragment") {
+                BOOST_FOREACH(const ptree::value_type &frag, child.second) {
+                    if (frag.first == "operand") {
+                        const ptree &op = frag.second.get_child("fragment");
+                        string message = op.get<string>("<xmlattr>.message");
+                        if (message.empty()) {
+                            cerr << "WARNING: Guard "
+                                 << "not associated with "
+                                 << "any ID. Skipped."
+                                 << endl;
+                            continue;
+                        }
+
+                        const ptree &guardSpec = 
+                            frag.second.get_child("guard.specification");
+                        string value = guardSpec.get<string>("<xmlattr>.value");
+                        // If no value is specified, set guard condition
+                        // to always true
+                        if (value.empty())
+                            value = "1";
+
+                        map<string, string> guards = model.guards;
+                        guards[message] = value;
+                        model.guards = guards;
+                    }
+                }
+            }
+
+            if (fragType != "uml:BehaviorExecutionSpecification") {
                 continue;
+            }
 
             BOOST_FOREACH(const ptree::value_type &com, child.second) {
                 if (com.first != "ownedComment")
@@ -185,6 +216,13 @@ static Model readModel(const ptree &modelTree,
                 taskModel.taskDuration = taskDuration;
                 model.submodels[modelInd] = taskModel;
             }
+        }
+    }
+
+    // Set condition for message with guard
+    if (!model.guards.empty()) {
+        BOOST_FOREACH(Connection &con, model.connections) {
+            con.condition = model.guards[con.id];
         }
     }
 

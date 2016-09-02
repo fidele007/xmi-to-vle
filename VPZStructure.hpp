@@ -36,6 +36,12 @@ enum ExperimentCombination {
     EC_total
 };
 
+struct Guard
+{
+    string condition;
+    string associatedID;
+};
+
 struct AttachedView 
 {
     string name;
@@ -60,6 +66,8 @@ struct Connection
     string name;
     Point origin;
     Point destination;
+    string id;
+    string condition;
 };
 
 struct View
@@ -118,6 +126,7 @@ struct Model
     vector<Port> outPorts;
     vector<Model> submodels;
     vector<Connection> connections;
+    map<string, string> guards;
     map<string, string> taskDuration;
 };
 
