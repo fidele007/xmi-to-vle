@@ -3,26 +3,15 @@
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <iterator>
 
 using namespace std;
 using boost::filesystem::path;
 
 static void writeModelToCPP(string fileContent, 
                             const Model model, 
-                            const bool isMainModel,
                             const path srcPath)
 {
-    if (!isMainModel) {
-        path coupledModelPath = srcPath;
-        coupledModelPath = coupledModelPath.append(model.name + ".cpp");
-        ofstream coupledOut(coupledModelPath.string());
-        string modelContent = boost::replace_all_copy(fileContent,
-                                                      "Simple",
-                                                      model.name);
-        coupledOut << modelContent;
-        coupledOut.close();
-    }
-
     BOOST_FOREACH(Model submodel, model.submodels) {
         path submodelPath = srcPath;
         submodelPath = submodelPath.append(submodel.name + ".cpp");
@@ -34,7 +23,7 @@ static void writeModelToCPP(string fileContent,
         out.close();
 
         if (!submodel.submodels.empty()) {
-            writeModelToCPP(fileContent, submodel, false, srcPath);
+            writeModelToCPP(fileContent, submodel, srcPath);
         }
     }
 }
@@ -49,5 +38,5 @@ void writeCPP(VLEProject project, const string &dirName)
     if (!is_directory(srcPath))
         create_directory(srcPath);
 
-    writeModelToCPP(fileContent, project.model, true, srcPath);
+    writeModelToCPP(fileContent, project.model, srcPath);
 }
