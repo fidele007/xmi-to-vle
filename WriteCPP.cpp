@@ -70,26 +70,6 @@ static void writeModelToCPP(string fileContent,
                             const path srcPath)
 {
     BOOST_FOREACH(Model submodel, model.submodels) {
-        map<string, string> taskMap = submodel.taskDuration;
-        string sigmaFunc = writeSigmaFunction(taskMap);
-        string stateEnum = writeStateEnum(taskMap);
-
-        string publicString = "public:";
-        string privateVar = "private:\n";
-        privateVar.append(stateEnum);
-        privateVar.append("\n");
-        privateVar.append(publicString);
-
-        string origTaFunc = "virtual vd::Time timeAdvance() const override\n";
-        origTaFunc.append("    {\n");
-        origTaFunc.append("        return vd::infinity;\n");
-        origTaFunc.append("    }");
-
-        string newTaFunc = "virtual vd::Time timeAdvance() const override\n";
-        newTaFunc.append("    {\n");
-        newTaFunc.append(sigmaFunc);
-        newTaFunc.append("    }");
-
         path submodelPath = srcPath;
         submodelPath = submodelPath.append(submodel.name + ".cpp");
         std::ofstream out(submodelPath.string());
@@ -97,13 +77,35 @@ static void writeModelToCPP(string fileContent,
                                                          "Simple",
                                                          submodel.name);
 
-        submodelContent = boost::replace_all_copy(submodelContent,
-                                                  publicString,
-                                                  privateVar);
-        
-        submodelContent = boost::replace_all_copy(submodelContent,
-                                                  origTaFunc,
-                                                  newTaFunc);
+        map<string, string> taskMap = submodel.taskDuration;
+        string stateEnum = writeStateEnum(taskMap);
+        string sigmaFunc = writeSigmaFunction(taskMap);
+
+        if (!stateEnum.empty()) {
+            string publicString = "public:";
+            string privateVar = "private:\n";
+            privateVar.append(stateEnum);
+            privateVar.append("\n");
+            privateVar.append(publicString);
+            submodelContent = boost::replace_all_copy(submodelContent,
+                                                      publicString,
+                                                      privateVar);
+        }
+
+        if (!sigmaFunc.empty()) {
+            string origTaFunc = "virtual vd::Time timeAdvance() const override\n";
+            origTaFunc.append("    {\n");
+            origTaFunc.append("        return vd::infinity;\n");
+            origTaFunc.append("    }");
+
+            string newTaFunc = "virtual vd::Time timeAdvance() const override\n";
+            newTaFunc.append("    {\n");
+            newTaFunc.append(sigmaFunc);
+            newTaFunc.append("    }");
+            submodelContent = boost::replace_all_copy(submodelContent,
+                                                      origTaFunc,
+                                                      newTaFunc);
+        }
 
         out << submodelContent;
         out.close();
