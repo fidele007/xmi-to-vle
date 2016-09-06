@@ -8,36 +8,102 @@
 using namespace std;
 using boost::filesystem::path;
 
+static string writeSigmaFunction(map<string, string> taskMap)
+{
+    string sigmaFunc;
+    if (!taskMap.empty()) {
+        sigmaFunc.append("        switch (modelState) {\n");
+        sigmaFunc.append("        case ");
+        sigmaFunc.append(taskMap.begin()->first);
+        sigmaFunc.append(":\n            return ");
+        sigmaFunc.append(taskMap.begin()->second);
+        sigmaFunc.append(";\n");
+
+        map<string, string>::iterator it;
+        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+            sigmaFunc.append("        case ");
+            sigmaFunc.append(it->first);
+            sigmaFunc.append(":\n            return ");
+            sigmaFunc.append(it->second);
+            sigmaFunc.append(";\n");
+        }
+        sigmaFunc.append("        default:\n");
+        sigmaFunc.append("            return vd::infinity;\n");
+        sigmaFunc.append("        };\n");
+    }
+
+    return sigmaFunc;
+}
+
+static string writeStateEnum(map<string, string> taskMap)
+{
+    string stateEnum;
+    if (!taskMap.empty()) {
+        stateEnum.append("    enum ");
+        stateEnum.append("State");
+        stateEnum.append(" {\n        ");
+        stateEnum.append(taskMap.begin()->first);
+
+        if (taskMap.size() > 1)
+            stateEnum.append(",");
+
+        stateEnum.append("\n");
+
+        map<string, string>::iterator it;
+        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+            stateEnum.append("        ");
+            stateEnum.append(it->first);
+            if (it != --taskMap.end())
+                stateEnum.append(",");
+
+            stateEnum.append("\n");
+        }
+        stateEnum.append("    };\n");
+        stateEnum.append("    State modelState;\n");
+    }
+
+    return stateEnum;
+}
+
 static void writeModelToCPP(string fileContent, 
                             const Model model, 
                             const path srcPath)
 {
     BOOST_FOREACH(Model submodel, model.submodels) {
+        map<string, string> taskMap = submodel.taskDuration;
+        string sigmaFunc = writeSigmaFunction(taskMap);
+        string stateEnum = writeStateEnum(taskMap);
+
+        string publicString = "public:";
+        string privateVar = "private:\n";
+        privateVar.append(stateEnum);
+        privateVar.append("\n");
+        privateVar.append(publicString);
+
+        string origTaFunc = "virtual vd::Time timeAdvance() const override\n";
+        origTaFunc.append("    {\n");
+        origTaFunc.append("        return vd::infinity;\n");
+        origTaFunc.append("    }");
+
+        string newTaFunc = "virtual vd::Time timeAdvance() const override\n";
+        newTaFunc.append("    {\n");
+        newTaFunc.append(sigmaFunc);
+        newTaFunc.append("    }");
+
         path submodelPath = srcPath;
         submodelPath = submodelPath.append(submodel.name + ".cpp");
         std::ofstream out(submodelPath.string());
         string submodelContent = boost::replace_all_copy(fileContent,
                                                          "Simple",
                                                          submodel.name);
-        string sigmaFunc;
-        map<string, string> taskMap = submodel.taskDuration;
-        if (!taskMap.empty()) {
-            sigmaFunc.append("if (phase_is(\"");
-            sigmaFunc.append(taskMap.begin()->first);
-            sigmaFunc.append("\") { return ");
-            sigmaFunc.append(taskMap.begin()->second);
-            sigmaFunc.append("; } ");
 
-            map<string, string>::iterator it;
-            for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
-                sigmaFunc.append("else if (phase_is(\"");
-                sigmaFunc.append(it->first);
-                sigmaFunc.append("\") { return ");
-                sigmaFunc.append(it->second);
-                sigmaFunc.append("; }");
-            }
-            cout << submodel.name << ":\n" << sigmaFunc << endl;
-        }
+        submodelContent = boost::replace_all_copy(submodelContent,
+                                                  publicString,
+                                                  privateVar);
+        
+        submodelContent = boost::replace_all_copy(submodelContent,
+                                                  origTaFunc,
+                                                  newTaFunc);
 
         out << submodelContent;
         out.close();
