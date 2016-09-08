@@ -126,7 +126,7 @@ static void writeModelToCPP(string fileContent,
 
         if (!sigmaFunc.empty()) {
             string origTaFunc = 
-                "virtual vd::Time timeAdvance() const override\n"
+                "    virtual vd::Time timeAdvance() const override\n"
                 "    {\n"
                 "        return vd::infinity;\n"
                 "    }";
