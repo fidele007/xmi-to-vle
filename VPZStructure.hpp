@@ -38,8 +38,9 @@ enum ExperimentCombination {
 
 struct Guard
 {
-    string condition;
-    string associatedID;
+    string type;
+    string value;
+    vector<string> idList;
 };
 
 struct AttachedView 
@@ -67,7 +68,7 @@ struct Connection
     Point origin;
     Point destination;
     string id;
-    string condition;
+    Guard guard;
 };
 
 struct View
@@ -126,7 +127,7 @@ struct Model
     vector<Port> outPorts;
     vector<Model> submodels;
     vector<Connection> connections;
-    map<string, string> guards;
+    vector<Guard> guards;
     map<string, string> taskDuration;
 };
 
