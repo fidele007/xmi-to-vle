@@ -80,7 +80,11 @@ static string writeExternalTransition(const vector<Port> inPorts) {
               "        for (it = event.begin(); it != event.end(); ++it) {\n";
     vector<Port>::const_iterator it;
     for (it = inPorts.begin(); it != inPorts.end(); ++it) {
-        extFunc.append("            if ((*it)->onPort(\"");
+        if (it == inPorts.begin())
+            extFunc.append("            if ((*it)->onPort(\"");
+        else
+            extFunc.append("            else if ((*it)->onPort(\"");
+
         extFunc.append(it->name);
         extFunc.append("\")) {\n");
         extFunc.append("                \n"); //TODO: to change
