@@ -12,8 +12,10 @@ static string writeSigmaFunction(map<string, string> taskMap)
 {
     string sigmaFunc;
     if (!taskMap.empty()) {
-        sigmaFunc.append("        switch (modelState) {\n");
-        sigmaFunc.append("        case ");
+        sigmaFunc = "    virtual vd::Time timeAdvance() const override\n"
+                    "    {\n"
+                    "        switch (modelPhase) {\n"
+                    "        case ";
         sigmaFunc.append(taskMap.begin()->first);
         sigmaFunc.append(":\n            return ");
         sigmaFunc.append(taskMap.begin()->second);
@@ -30,6 +32,7 @@ static string writeSigmaFunction(map<string, string> taskMap)
         sigmaFunc.append("        default:\n");
         sigmaFunc.append("            return vd::infinity;\n");
         sigmaFunc.append("        };\n");
+        sigmaFunc.append("    }");
     }
 
     return sigmaFunc;
@@ -39,9 +42,8 @@ static string writeStateEnum(map<string, string> taskMap)
 {
     string stateEnum;
     if (!taskMap.empty()) {
-        stateEnum.append("    enum ");
-        stateEnum.append("State");
-        stateEnum.append(" {\n        ");
+        stateEnum.append("    enum PHASE {\n");
+        stateEnum.append("        ");
         stateEnum.append(taskMap.begin()->first);
 
         if (taskMap.size() > 1)
@@ -59,7 +61,7 @@ static string writeStateEnum(map<string, string> taskMap)
             stateEnum.append("\n");
         }
         stateEnum.append("    };\n");
-        stateEnum.append("    State modelState;\n");
+        stateEnum.append("    PHASE modelPhase;\n");
     }
 
     return stateEnum;
@@ -81,7 +83,7 @@ static string writeExternalTransition(const vector<Port> inPorts) {
         extFunc.append("            if ((*it)->onPort(\"");
         extFunc.append(it->name);
         extFunc.append("\")) {\n");
-        extFunc.append("                ta = 0;\n"); //TODO: to change
+        extFunc.append("                \n"); //TODO: to change
         extFunc.append("            }\n");
     }
     extFunc.append("        }\n");
@@ -119,18 +121,15 @@ static void writeModelToCPP(string fileContent,
         }
 
         if (!sigmaFunc.empty()) {
-            string origTaFunc = "virtual vd::Time timeAdvance() const override\n";
-            origTaFunc.append("    {\n");
-            origTaFunc.append("        return vd::infinity;\n");
-            origTaFunc.append("    }");
+            string origTaFunc = 
+                "virtual vd::Time timeAdvance() const override\n"
+                "    {\n"
+                "        return vd::infinity;\n"
+                "    }";
 
-            string newTaFunc = "virtual vd::Time timeAdvance() const override\n";
-            newTaFunc.append("    {\n");
-            newTaFunc.append(sigmaFunc);
-            newTaFunc.append("    }");
             submodelContent = boost::replace_all_copy(submodelContent,
                                                       origTaFunc,
-                                                      newTaFunc);
+                                                      sigmaFunc);
         }
 
         if (!extFunc.empty()) {
@@ -140,9 +139,10 @@ static void writeModelToCPP(string fileContent,
                 "            vle::devs::Time /*time*/) override\n"
                 "    {\n"
                 "    }";
-                submodelContent = boost::replace_all_copy(submodelContent,
-                                                          origExtFunc,
-                                                          extFunc);
+
+            submodelContent = boost::replace_all_copy(submodelContent,
+                                                      origExtFunc,
+                                                      extFunc);
         }
 
         out << submodelContent;
