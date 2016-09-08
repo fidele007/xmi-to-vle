@@ -65,6 +65,31 @@ static string writeStateEnum(map<string, string> taskMap)
     return stateEnum;
 }
 
+static string writeExternalTransition(const vector<Port> inPorts) {
+    string extFunc;
+    if (inPorts.empty())
+        return extFunc;
+
+    extFunc = "    virtual void externalTransition(\n"
+              "            const vd::ExternalEventList& event,\n"
+              "            vle::devs::Time /*time*/) override\n"
+              "    {\n"
+              "        vd::ExternalEventList::const_iterator it;\n"
+              "        for (it = event.begin(); it != event.end(); ++it) {\n";
+    vector<Port>::const_iterator it;
+    for (it = inPorts.begin(); it != inPorts.end(); ++it) {
+        extFunc.append("            if ((*it)->onPort(\"");
+        extFunc.append(it->name);
+        extFunc.append("\")) {\n");
+        extFunc.append("                ta = 0;\n"); //TODO: to change
+        extFunc.append("            }\n");
+    }
+    extFunc.append("        }\n");
+    extFunc.append("    }");
+
+    return extFunc;
+}
+
 static void writeModelToCPP(string fileContent, 
                             const Model model, 
                             const path srcPath)
@@ -80,6 +105,7 @@ static void writeModelToCPP(string fileContent,
         map<string, string> taskMap = submodel.taskDuration;
         string stateEnum = writeStateEnum(taskMap);
         string sigmaFunc = writeSigmaFunction(taskMap);
+        string extFunc = writeExternalTransition(submodel.inPorts);
 
         if (!stateEnum.empty()) {
             string publicString = "public:";
@@ -105,6 +131,18 @@ static void writeModelToCPP(string fileContent,
             submodelContent = boost::replace_all_copy(submodelContent,
                                                       origTaFunc,
                                                       newTaFunc);
+        }
+
+        if (!extFunc.empty()) {
+            string origExtFunc =
+                "    virtual void externalTransition(\n"
+                "            const vd::ExternalEventList& /*event*/,\n"
+                "            vle::devs::Time /*time*/) override\n"
+                "    {\n"
+                "    }";
+                submodelContent = boost::replace_all_copy(submodelContent,
+                                                          origExtFunc,
+                                                          extFunc);
         }
 
         out << submodelContent;
