@@ -8,21 +8,21 @@
 using namespace std;
 using boost::filesystem::path;
 
-static string writeSigmaFunction(map<string, string> taskMap)
+static string writeSigmaFunction(map<string, string> stateMap)
 {
     string sigmaFunc;
-    if (!taskMap.empty()) {
+    if (!stateMap.empty()) {
         sigmaFunc = "    virtual vd::Time timeAdvance() const override\n"
                     "    {\n"
                     "        switch (modelPhase) {\n"
                     "        case ";
-        sigmaFunc.append(taskMap.begin()->first);
+        sigmaFunc.append(stateMap.begin()->first);
         sigmaFunc.append(":\n            return ");
-        sigmaFunc.append(taskMap.begin()->second);
+        sigmaFunc.append(stateMap.begin()->second);
         sigmaFunc.append(";\n");
 
         map<string, string>::iterator it;
-        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+        for (it = std::next(stateMap.begin()); it != stateMap.end(); ++it) {
             sigmaFunc.append("        case ");
             sigmaFunc.append(it->first);
             sigmaFunc.append(":\n            return ");
@@ -38,24 +38,24 @@ static string writeSigmaFunction(map<string, string> taskMap)
     return sigmaFunc;
 }
 
-static string writeStateEnum(map<string, string> taskMap)
+static string writeStateEnum(map<string, string> stateMap)
 {
     string stateEnum;
-    if (!taskMap.empty()) {
+    if (!stateMap.empty()) {
         stateEnum.append("    enum PHASE {\n");
         stateEnum.append("        ");
-        stateEnum.append(taskMap.begin()->first);
+        stateEnum.append(stateMap.begin()->first);
 
-        if (taskMap.size() > 1)
+        if (stateMap.size() > 1)
             stateEnum.append(",");
 
         stateEnum.append("\n");
 
         map<string, string>::iterator it;
-        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+        for (it = std::next(stateMap.begin()); it != stateMap.end(); ++it) {
             stateEnum.append("        ");
             stateEnum.append(it->first);
-            if (it != --taskMap.end())
+            if (it != --stateMap.end())
                 stateEnum.append(",");
 
             stateEnum.append("\n");
@@ -87,7 +87,7 @@ static string writeExternalTransition(const vector<Port> inPorts) {
 
         extFunc.append(it->name);
         extFunc.append("\")) {\n");
-        extFunc.append("                \n"); //TODO: to change
+        extFunc.append("                modelPhase = \n"); //TODO: to change
         extFunc.append("            }\n");
     }
     extFunc.append("        }\n");
@@ -108,9 +108,9 @@ static void writeModelToCPP(string fileContent,
                                                          "Simple",
                                                          submodel.name);
 
-        map<string, string> taskMap = submodel.taskDuration;
-        string stateEnum = writeStateEnum(taskMap);
-        string sigmaFunc = writeSigmaFunction(taskMap);
+        map<string, string> stateMap = submodel.stateDuration;
+        string stateEnum = writeStateEnum(stateMap);
+        string sigmaFunc = writeSigmaFunction(stateMap);
         string extFunc = writeExternalTransition(submodel.inPorts);
 
         if (!stateEnum.empty()) {

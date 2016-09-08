@@ -128,7 +128,7 @@ struct Model
     vector<Model> submodels;
     vector<Connection> connections;
     vector<Guard> guards;
-    map<string, string> taskDuration;
+    map<string, string> stateDuration;
 };
 
 struct Class

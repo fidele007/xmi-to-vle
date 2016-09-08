@@ -78,7 +78,7 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
     }
 }
 
-static void getTaskDurationForModel(const ptree &tree,
+static void getStateDurationForModel(const ptree &tree,
                                     vector<Model> &submodels)
 {
     BOOST_FOREACH(const ptree::value_type &child, tree) {
@@ -89,15 +89,15 @@ static void getTaskDurationForModel(const ptree &tree,
         if (fragType == "uml:CombinedFragment") {
             BOOST_FOREACH(const ptree::value_type &op, child.second) {
                 if (op.first == "operand")
-                    getTaskDurationForModel(op.second, submodels);
+                    getStateDurationForModel(op.second, submodels);
             }
         } else if (fragType == "uml:BehaviorExecutionSpecification") {
             BOOST_FOREACH(const ptree::value_type &com, child.second) {
                 if (com.first != "ownedComment")
                     continue;
 
-                string taskComment = com.second.get("body", "");
-                if (taskComment.empty())
+                string stateComment = com.second.get("body", "");
+                if (stateComment.empty())
                     continue;
 
                 string modelID = child.second.get<string>("<xmlattr>.covered");
@@ -105,17 +105,17 @@ static void getTaskDurationForModel(const ptree &tree,
                 if (modelInd == -1) {
                     cerr << "WARNING: Model with ID "
                          << modelID
-                         << " not found. Task is skipped."
+                         << " not found. State is skipped."
                          << endl;
 
                     continue;
                 }
 
-                Model &taskModel = submodels[modelInd];
-                map<string, string> taskDuration = taskModel.taskDuration;
-                vector<string> taskString = split(taskComment, "/time=");
-                taskDuration[taskString[0]] = taskString[1];
-                taskModel.taskDuration = taskDuration;
+                Model &stateModel = submodels[modelInd];
+                map<string, string> stateDuration = stateModel.stateDuration;
+                vector<string> stateString = split(stateComment, "/time=");
+                stateDuration[stateString[0]] = stateString[1];
+                stateModel.stateDuration = stateDuration;
             }
         }
     }
@@ -253,7 +253,7 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model.guards);
-    getTaskDurationForModel(modelTree, model.submodels);
+    getStateDurationForModel(modelTree, model.submodels);
 
     // Set guard for message if exist
     if (!model.guards.empty() && !model.connections.empty()) {
