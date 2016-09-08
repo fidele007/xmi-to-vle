@@ -78,6 +78,49 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
     }
 }
 
+static void getTaskDurationForModel(const ptree &tree,
+                                    vector<Model> &submodels)
+{
+    BOOST_FOREACH(const ptree::value_type &child, tree) {
+        if (child.first != "fragment")
+            continue;
+
+        string fragType = child.second.get("<xmlattr>.xmi:type", "");
+        if (fragType == "uml:CombinedFragment") {
+            BOOST_FOREACH(const ptree::value_type &op, child.second) {
+                if (op.first == "operand")
+                    getTaskDurationForModel(op.second, submodels);
+            }
+        } else if (fragType == "uml:BehaviorExecutionSpecification") {
+            BOOST_FOREACH(const ptree::value_type &com, child.second) {
+                if (com.first != "ownedComment")
+                    continue;
+
+                string taskComment = com.second.get("body", "");
+                if (taskComment.empty())
+                    continue;
+
+                string modelID = child.second.get<string>("<xmlattr>.covered");
+                int modelInd = getModelIndexFromID(submodels, modelID);
+                if (modelInd == -1) {
+                    cerr << "WARNING: Model with ID "
+                         << modelID
+                         << " not found. Task is skipped."
+                         << endl;
+
+                    continue;
+                }
+
+                Model &taskModel = submodels[modelInd];
+                map<string, string> taskDuration = taskModel.taskDuration;
+                vector<string> taskString = split(taskComment, "/time=");
+                taskDuration[taskString[0]] = taskString[1];
+                taskModel.taskDuration = taskDuration;
+            }
+        }
+    }
+}
+
 static Model readModel(const ptree &modelTree, 
                        const vector<ptree> allModels,
                        const bool isMainModel)
@@ -206,45 +249,11 @@ static Model readModel(const ptree &modelTree,
             model.submodels[destIndex] = destModel;
 
             model.connections.push_back(con);
-        } else if (child.first == "fragment") {
-            string fragType = child.second.get("<xmlattr>.xmi:type", "");
-            if (fragType != "uml:BehaviorExecutionSpecification")
-                continue;
-
-            BOOST_FOREACH(const ptree::value_type &com, child.second) {
-                if (com.first != "ownedComment")
-                    continue;
-
-                string taskComment = com.second.get("body", "");
-                if (taskComment.empty())
-                    continue;
-
-                string modelID = child.second.get<string>("<xmlattr>.covered");
-                int modelInd = getModelIndexFromID(model.submodels, modelID);
-                if (modelInd == -1) {
-                    cerr << "WARNING: Model with ID "
-                         << modelID
-                         << " not found. Task is skipped."
-                         << endl;
-
-                    continue;
-                }
-
-                Model taskModel = model.submodels[modelInd];
-                map<string, string> taskDuration = taskModel.taskDuration;
-
-                vector<string> taskVect = split(taskComment, "/time=");
-                taskDuration[taskVect[0]] = taskVect[1];
-                
-                taskModel.taskDuration = taskDuration;
-                model.submodels[modelInd] = taskModel;
-            }
         }
     }
 
-    vector<Guard> guards;
-    getGuardsForModel(modelTree, guards);
-    model.guards = guards;
+    getGuardsForModel(modelTree, model.guards);
+    getTaskDurationForModel(modelTree, model.submodels);
 
     // Set guard for message if exist
     if (!model.guards.empty() && !model.connections.empty()) {
