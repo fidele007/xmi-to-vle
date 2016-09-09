@@ -68,6 +68,11 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
                         subFrag.second.get<string>("<xmlattr>.message");
 
                     aGuard.idList.push_back(associatedId);
+                } else if (subFragType == "uml:BehaviorExecutionSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.xmi:id");
+
+                    aGuard.idList.push_back(associatedId);
                 } else {
                     continue;
                 }
