@@ -25,81 +25,6 @@ static vector<string> split(string data, string token)
     return output;
 }
 
-static void getGuardsForModel(const ptree &modelTree, Model &model)
-{
-    vector<Guard> &guards = model.guards;
-    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
-        if (child.first != "fragment")
-            continue;
-
-        string fragType = child.second.get("<xmlattr>.xmi:type", "");
-
-        if (fragType != "uml:CombinedFragment")
-            continue;
-
-        string combinedFragType =
-            child.second.get<string>("<xmlattr>.interactionOperator");
-
-        BOOST_FOREACH(const ptree::value_type &frag, child.second) {
-            if (frag.first != "operand")
-                continue;
-
-            const ptree &guardSpec =
-                frag.second.get_child("guard.specification");
-            string value = guardSpec.get<string>("<xmlattr>.value");
-            // If no guard value is specified, set it to always true
-            if (value.empty())
-                value = "1";
-
-            Guard aGuard;
-            aGuard.value = value;
-            aGuard.type = combinedFragType;
-
-            BOOST_FOREACH(const ptree::value_type &subFrag, frag.second) {
-                if (subFrag.first != "fragment")
-                    continue;
-
-                string subFragType =
-                    subFrag.second.get<string>("<xmlattr>.xmi:type");
-
-                if (subFragType == "uml:CombinedFragment") {
-                    getGuardsForModel(frag.second, model);
-                } else if (subFragType == "uml:MessageOccurrenceSpecification") {
-                    string associatedId =
-                        subFrag.second.get<string>("<xmlattr>.message");
-
-                    aGuard.idList.push_back(associatedId);
-                } else if (subFragType == "uml:BehaviorExecutionSpecification") {
-                    string associatedId =
-                        subFrag.second.get<string>("<xmlattr>.xmi:id");
-
-                    aGuard.idList.push_back(associatedId);
-                } else {
-                    continue;
-                }
-            }
-            
-            guards.push_back(aGuard);
-        }
-    }
-}
-
-static void getConnectionsForGuards(Model &model) {
-    if (model.guards.empty() || model.connections.empty())
-        return;
-
-    BOOST_FOREACH(Connection con, model.connections) {
-        BOOST_FOREACH(Guard &guard, model.guards) {
-            BOOST_FOREACH(string id, guard.idList) {
-                if (con.id == id) {
-                    guard.connections.push_back(con);
-                    break;
-                }
-            }
-        }
-    }
-}
-
 static void getStatesForModel(const ptree &modelTree, Model &model)
 {
     vector<Model> &submodels = model.submodels;
@@ -169,6 +94,81 @@ static void getPortsForStates(Model &model)
                          state.finish == con.destination.id)
                 {
                     state.inPort = con.destination;
+                }
+            }
+        }
+    }
+}
+
+static void getGuardsForModel(const ptree &modelTree, Model &model)
+{
+    vector<Guard> &guards = model.guards;
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
+        if (child.first != "fragment")
+            continue;
+
+        string fragType = child.second.get("<xmlattr>.xmi:type", "");
+
+        if (fragType != "uml:CombinedFragment")
+            continue;
+
+        string combinedFragType =
+            child.second.get<string>("<xmlattr>.interactionOperator");
+
+        BOOST_FOREACH(const ptree::value_type &frag, child.second) {
+            if (frag.first != "operand")
+                continue;
+
+            const ptree &guardSpec =
+                frag.second.get_child("guard.specification");
+            string value = guardSpec.get<string>("<xmlattr>.value");
+            // If no guard value is specified, set it to always true
+            if (value.empty())
+                value = "1";
+
+            Guard aGuard;
+            aGuard.value = value;
+            aGuard.type = combinedFragType;
+
+            BOOST_FOREACH(const ptree::value_type &subFrag, frag.second) {
+                if (subFrag.first != "fragment")
+                    continue;
+
+                string subFragType =
+                    subFrag.second.get<string>("<xmlattr>.xmi:type");
+
+                if (subFragType == "uml:CombinedFragment") {
+                    getGuardsForModel(frag.second, model);
+                } else if (subFragType == "uml:MessageOccurrenceSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.message");
+
+                    aGuard.idList.push_back(associatedId);
+                } else if (subFragType == "uml:BehaviorExecutionSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.xmi:id");
+
+                    aGuard.idList.push_back(associatedId);
+                } else {
+                    continue;
+                }
+            }
+
+            guards.push_back(aGuard);
+        }
+    }
+}
+
+static void getConnectionsForGuards(Model &model) {
+    if (model.guards.empty() || model.connections.empty())
+        return;
+
+    BOOST_FOREACH(Connection con, model.connections) {
+        BOOST_FOREACH(Guard &guard, model.guards) {
+            BOOST_FOREACH(string id, guard.idList) {
+                if (con.id == id) {
+                    guard.connections.push_back(con);
+                    break;
                 }
             }
         }
@@ -304,10 +304,11 @@ static Model readModel(const ptree &modelTree,
         }
     }
 
-    getGuardsForModel(modelTree, model);
-    getConnectionsForGuards(model);
     getStatesForModel(modelTree, model);
     getPortsForStates(model);
+
+    getGuardsForModel(modelTree, model);
+    getConnectionsForGuards(model);
 
     return model;
 }
