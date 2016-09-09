@@ -78,8 +78,8 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
     }
 }
 
-static void getStateDurationForModel(const ptree &tree,
-                                    vector<Model> &submodels)
+static void getStateForModel(const ptree &tree,
+                             vector<Model> &submodels)
 {
     BOOST_FOREACH(const ptree::value_type &child, tree) {
         if (child.first != "fragment")
@@ -89,7 +89,7 @@ static void getStateDurationForModel(const ptree &tree,
         if (fragType == "uml:CombinedFragment") {
             BOOST_FOREACH(const ptree::value_type &op, child.second) {
                 if (op.first == "operand")
-                    getStateDurationForModel(op.second, submodels);
+                    getStateForModel(op.second, submodels);
             }
         } else if (fragType == "uml:BehaviorExecutionSpecification") {
             BOOST_FOREACH(const ptree::value_type &com, child.second) {
@@ -111,11 +111,14 @@ static void getStateDurationForModel(const ptree &tree,
                     continue;
                 }
 
-                Model &stateModel = submodels[modelInd];
-                map<string, string> stateDuration = stateModel.stateDuration;
+                vector<State> &states = submodels[modelInd].states;
                 vector<string> stateString = split(stateComment, "/time=");
-                stateDuration[stateString[0]] = stateString[1];
-                stateModel.stateDuration = stateDuration;
+
+                State aState;
+                aState.name = stateString[0];
+                aState.duration = stateString[1];
+
+                states.push_back(aState);
             }
         }
     }
@@ -253,7 +256,7 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model.guards);
-    getStateDurationForModel(modelTree, model.submodels);
+    getStateForModel(modelTree, model.submodels);
 
     // Set guard for message if exist
     if (!model.guards.empty() && !model.connections.empty()) {

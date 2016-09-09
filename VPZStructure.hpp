@@ -114,6 +114,13 @@ struct Experiment
     Views views;
 };
 
+struct State
+{
+    string name;
+    string duration;
+    vector<Connection> connections;
+};
+
 struct Model
 {
     string id;
@@ -128,7 +135,7 @@ struct Model
     vector<Model> submodels;
     vector<Connection> connections;
     vector<Guard> guards;
-    map<string, string> stateDuration;
+    vector<State> states;
 };
 
 struct Class

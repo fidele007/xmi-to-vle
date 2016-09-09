@@ -8,25 +8,25 @@
 using namespace std;
 using boost::filesystem::path;
 
-static string writeSigmaFunction(map<string, string> stateMap)
+static string writeSigmaFunction(vector<State> stateVect)
 {
     string sigmaFunc;
-    if (!stateMap.empty()) {
+    if (!stateVect.empty()) {
         sigmaFunc = "    virtual vd::Time timeAdvance() const override\n"
                     "    {\n"
                     "        switch (modelPhase) {\n"
                     "        case ";
-        sigmaFunc.append(stateMap.begin()->first);
+        sigmaFunc.append(stateVect.begin()->name);
         sigmaFunc.append(":\n            return ");
-        sigmaFunc.append(stateMap.begin()->second);
+        sigmaFunc.append(stateVect.begin()->duration);
         sigmaFunc.append(";\n");
 
-        map<string, string>::iterator it;
-        for (it = std::next(stateMap.begin()); it != stateMap.end(); ++it) {
+        vector<State>::iterator it;
+        for (it = std::next(stateVect.begin()); it != stateVect.end(); ++it) {
             sigmaFunc.append("        case ");
-            sigmaFunc.append(it->first);
+            sigmaFunc.append(it->name);
             sigmaFunc.append(":\n            return ");
-            sigmaFunc.append(it->second);
+            sigmaFunc.append(it->duration);
             sigmaFunc.append(";\n");
         }
         sigmaFunc.append("        default:\n");
@@ -38,24 +38,24 @@ static string writeSigmaFunction(map<string, string> stateMap)
     return sigmaFunc;
 }
 
-static string writeStateEnum(map<string, string> stateMap)
+static string writeStateEnum(vector<State> stateVect)
 {
     string stateEnum;
-    if (!stateMap.empty()) {
+    if (!stateVect.empty()) {
         stateEnum.append("    enum PHASE {\n");
         stateEnum.append("        ");
-        stateEnum.append(stateMap.begin()->first);
+        stateEnum.append(stateVect.begin()->name);
 
-        if (stateMap.size() > 1)
+        if (stateVect.size() > 1)
             stateEnum.append(",");
 
         stateEnum.append("\n");
 
-        map<string, string>::iterator it;
-        for (it = std::next(stateMap.begin()); it != stateMap.end(); ++it) {
+        vector<State>::iterator it;
+        for (it = std::next(stateVect.begin()); it != stateVect.end(); ++it) {
             stateEnum.append("        ");
-            stateEnum.append(it->first);
-            if (it != --stateMap.end())
+            stateEnum.append(it->name);
+            if (it != --stateVect.end())
                 stateEnum.append(",");
 
             stateEnum.append("\n");
@@ -108,9 +108,9 @@ static void writeModelToCPP(string fileContent,
                                                          "Simple",
                                                          submodel.name);
 
-        map<string, string> stateMap = submodel.stateDuration;
-        string stateEnum = writeStateEnum(stateMap);
-        string sigmaFunc = writeSigmaFunction(stateMap);
+        vector<State> stateVect = submodel.states;
+        string stateEnum = writeStateEnum(stateVect);
+        string sigmaFunc = writeSigmaFunction(stateVect);
         string extFunc = writeExternalTransition(submodel.inPorts);
 
         if (!stateEnum.empty()) {
