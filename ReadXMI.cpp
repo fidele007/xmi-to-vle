@@ -79,7 +79,7 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
 }
 
 // Set guard for message if exist
-static void linkGuardsWithConnections(Model &model) {
+static void linkConnectionsWithGuards(Model &model) {
     if (model.guards.empty() || model.connections.empty())
         return;
 
@@ -301,7 +301,7 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model.guards);
-    linkGuardsWithConnections(model);
+    linkConnectionsWithGuards(model);
 
     getStateForModel(modelTree, model.submodels);
     linkStatesWithConnections(model);
