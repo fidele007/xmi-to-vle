@@ -153,7 +153,7 @@ static void getStatesForModel(const ptree &modelTree, Model &model)
     }
 }
 
-static void getConnectionsForStates(Model &model)
+static void getPortsForStates(Model &model)
 {
     if (model.submodels.empty())
         return;
@@ -162,11 +162,14 @@ static void getConnectionsForStates(Model &model)
         BOOST_FOREACH(State &state, submodel.states) {
             BOOST_FOREACH(Connection con, model.connections) {
                 if (state.start == con.origin.id ||
-                    state.start == con.destination.id ||
-                    state.finish == con.origin.id ||
-                    state.finish == con.destination.id)
+                    state.finish == con.origin.id)
                 {
-                    state.connections.push_back(con);
+                    state.outPort = con.origin;
+                }
+                else if (state.start == con.destination.id ||
+                         state.finish == con.destination.id)
+                {
+                    state.inPort = con.destination;
                 }
             }
         }
@@ -305,7 +308,7 @@ static Model readModel(const ptree &modelTree,
     getGuardsForModel(modelTree, model);
     getGuardsForConnections(model);
     getStatesForModel(modelTree, model);
-    getConnectionsForStates(model);
+    getPortsForStates(model);
 
     return model;
 }

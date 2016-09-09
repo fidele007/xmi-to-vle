@@ -115,7 +115,8 @@ struct State
     string duration;
     string start;
     string finish;
-    vector<Connection> connections;
+    Port inPort;
+    Port outPort;
 };
 
 struct Model
