@@ -84,16 +84,15 @@ static void getGuardsForModel(const ptree &modelTree, Model &model)
     }
 }
 
-// Set guard for message if exist
-static void getGuardsForConnections(Model &model) {
+static void getConnectionsForGuards(Model &model) {
     if (model.guards.empty() || model.connections.empty())
         return;
 
-    BOOST_FOREACH(Connection &con, model.connections) {
-        BOOST_FOREACH(Guard guard, model.guards) {
+    BOOST_FOREACH(Connection con, model.connections) {
+        BOOST_FOREACH(Guard &guard, model.guards) {
             BOOST_FOREACH(string id, guard.idList) {
                 if (con.id == id) {
-                    con.guard = guard;
+                    guard.connections.push_back(con);
                     break;
                 }
             }
@@ -306,7 +305,7 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model);
-    getGuardsForConnections(model);
+    getConnectionsForGuards(model);
     getStatesForModel(modelTree, model);
     getPortsForStates(model);
 

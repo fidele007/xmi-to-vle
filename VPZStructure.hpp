@@ -36,13 +36,6 @@ enum ExperimentCombination {
     EC_total
 };
 
-struct Guard
-{
-    string type;
-    string value;
-    vector<string> idList;
-};
-
 struct AttachedView 
 {
     string name;
@@ -62,7 +55,14 @@ struct Connection
     Port origin;
     Port destination;
     string id;
-    Guard guard;
+};
+
+struct Guard
+{
+    string type;
+    string value;
+    vector<string> idList;
+    vector<Connection> connections;
 };
 
 struct View
