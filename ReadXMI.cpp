@@ -92,6 +92,9 @@ static void getStateForModel(const ptree &tree,
                     getStateForModel(op.second, submodels);
             }
         } else if (fragType == "uml:BehaviorExecutionSpecification") {
+            string stateID = child.second.get("<xmlattr>.xmi:id", "");
+            string start = child.second.get("<xmlattr>.start", "");
+            string finish = child.second.get("<xmlattr>.finish", "");
             BOOST_FOREACH(const ptree::value_type &com, child.second) {
                 if (com.first != "ownedComment")
                     continue;
@@ -115,10 +118,33 @@ static void getStateForModel(const ptree &tree,
                 vector<string> stateString = split(stateComment, "/time=");
 
                 State aState;
+                aState.id = stateID;
                 aState.name = stateString[0];
                 aState.duration = stateString[1];
+                aState.start = start;
+                aState.finish = finish;
 
                 states.push_back(aState);
+            }
+        }
+    }
+}
+
+static void linkStatesWithConnections(Model &model)
+{
+    if (model.submodels.empty())
+        return;
+
+    BOOST_FOREACH(Model &submodel, model.submodels) {
+        BOOST_FOREACH(State &state, submodel.states) {
+            BOOST_FOREACH(Connection con, model.connections) {
+                if (state.start == con.origin.id ||
+                    state.start == con.destination.id ||
+                    state.finish == con.origin.id ||
+                    state.finish == con.destination.id)
+                {
+                    state.connections.push_back(con);
+                }
             }
         }
     }
@@ -225,6 +251,7 @@ static Model readModel(const ptree &modelTree,
             }
 
             Model origModel = model.submodels[origIndex];
+            con.origin.id = origID;
             con.origin.modelName = origModel.name;
             con.origin.portName = con.name + ".out";
             Port outPort;
@@ -244,6 +271,7 @@ static Model readModel(const ptree &modelTree,
             }
 
             Model destModel = model.submodels[destIndex];
+            con.destination.id = destID;
             con.destination.modelName = destModel.name;
             con.destination.portName = con.name + ".in";
             Port inPort;
@@ -256,7 +284,10 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model.guards);
+    // linkGuardsWithConnections(model.submodels);
+
     getStateForModel(modelTree, model.submodels);
+    linkStatesWithConnections(model);
 
     // Set guard for message if exist
     if (!model.guards.empty() && !model.connections.empty()) {

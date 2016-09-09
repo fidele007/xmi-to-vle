@@ -67,7 +67,8 @@ static string writeStateEnum(vector<State> stateVect)
     return stateEnum;
 }
 
-static string writeExternalTransition(const vector<Port> inPorts) {
+static string writeExternalTransition(const vector<Port> inPorts)
+{
     string extFunc;
     if (inPorts.empty())
         return extFunc;

@@ -57,6 +57,7 @@ struct Port
 // Common struct for origin and destination
 struct Point
 {
+    string id; // store sendEvent(origin) or receiveEvent(destination)
     string modelName;
     string portName;
 };
@@ -116,8 +117,11 @@ struct Experiment
 
 struct State
 {
+    string id;
     string name;
     string duration;
+    string start;
+    string finish;
     vector<Connection> connections;
 };
 
