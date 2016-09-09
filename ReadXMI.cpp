@@ -276,10 +276,8 @@ static Model readModel(const ptree &modelTree,
             Model origModel = model.submodels[origIndex];
             con.origin.id = origID;
             con.origin.modelName = origModel.name;
-            con.origin.portName = con.name + ".out";
-            Port outPort;
-            outPort.name = con.origin.portName;
-            origModel.outPorts.push_back(outPort);
+            con.origin.name = con.name + ".out";
+            origModel.outPorts.push_back(con.origin);
             model.submodels[origIndex] = origModel;
 
             string destID = child.second.get<string>("<xmlattr>.receiveEvent");
@@ -296,10 +294,8 @@ static Model readModel(const ptree &modelTree,
             Model destModel = model.submodels[destIndex];
             con.destination.id = destID;
             con.destination.modelName = destModel.name;
-            con.destination.portName = con.name + ".in";
-            Port inPort;
-            inPort.name = con.destination.portName;
-            destModel.inPorts.push_back(inPort);
+            con.destination.name = con.name + ".in";
+            destModel.inPorts.push_back(con.destination);
             model.submodels[destIndex] = destModel;
 
             model.connections.push_back(con);

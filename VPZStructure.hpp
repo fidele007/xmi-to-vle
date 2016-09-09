@@ -50,24 +50,17 @@ struct AttachedView
 
 struct Port
 {
-    string name;
-    vector<AttachedView> attachedViews;
-};
-
-// Common struct for origin and destination
-struct Point
-{
-    string id; // store sendEvent(origin) or receiveEvent(destination)
+    string id;
     string modelName;
-    string portName;
+    string name;
 };
 
 struct Connection
 {
     ConnectionType type;
     string name;
-    Point origin;
-    Point destination;
+    Port origin;
+    Port destination;
     string id;
     Guard guard;
 };

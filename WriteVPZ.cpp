@@ -96,11 +96,11 @@ static void addConnections(const Model model, ptree &connectionsNode)
 
         ptree &originNode = connectionNode.put("origin", "");
         originNode.put("<xmlattr>.model", con.origin.modelName);
-        originNode.put("<xmlattr>.port", con.origin.portName);
+        originNode.put("<xmlattr>.port", con.origin.name);
 
         ptree &destNode = connectionNode.put("destination", "");
         destNode.put("<xmlattr>.model", con.destination.modelName);
-        destNode.put("<xmlattr>.port", con.destination.portName);
+        destNode.put("<xmlattr>.port", con.destination.name);
     }
 }
 
