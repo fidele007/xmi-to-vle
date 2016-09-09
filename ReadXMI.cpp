@@ -25,9 +25,10 @@ static vector<string> split(string data, string token)
     return output;
 }
 
-static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
+static void getGuardsForModel(const ptree &modelTree, Model &model)
 {
-    BOOST_FOREACH(const ptree::value_type &child, tree) {
+    vector<Guard> &guards = model.guards;
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
         if (child.first != "fragment")
             continue;
 
@@ -62,7 +63,7 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
                     subFrag.second.get<string>("<xmlattr>.xmi:type");
 
                 if (subFragType == "uml:CombinedFragment") {
-                    getGuardsForModel(frag.second, guards);
+                    getGuardsForModel(frag.second, model);
                 } else if (subFragType == "uml:MessageOccurrenceSpecification") {
                     string associatedId =
                         subFrag.second.get<string>("<xmlattr>.message");
@@ -100,10 +101,10 @@ static void linkConnectionsWithGuards(Model &model) {
     }
 }
 
-static void getStateForModel(const ptree &tree,
-                             vector<Model> &submodels)
+static void getStatesForModel(const ptree &modelTree, Model &model)
 {
-    BOOST_FOREACH(const ptree::value_type &child, tree) {
+    vector<Model> &submodels = model.submodels;
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
         if (child.first != "fragment")
             continue;
 
@@ -111,7 +112,7 @@ static void getStateForModel(const ptree &tree,
         if (fragType == "uml:CombinedFragment") {
             BOOST_FOREACH(const ptree::value_type &op, child.second) {
                 if (op.first == "operand")
-                    getStateForModel(op.second, submodels);
+                    getStatesForModel(op.second, model);
             }
         } else if (fragType == "uml:BehaviorExecutionSpecification") {
             string stateID = child.second.get("<xmlattr>.xmi:id", "");
@@ -305,10 +306,10 @@ static Model readModel(const ptree &modelTree,
         }
     }
 
-    getGuardsForModel(modelTree, model.guards);
+    getGuardsForModel(modelTree, model);
     linkConnectionsWithGuards(model);
 
-    getStateForModel(modelTree, model.submodels);
+    getStatesForModel(modelTree, model);
     linkStatesWithConnections(model);
 
     return model;
