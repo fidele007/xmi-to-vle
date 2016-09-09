@@ -78,6 +78,23 @@ static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
     }
 }
 
+// Set guard for message if exist
+static void linkGuardsWithConnections(Model &model) {
+    if (model.guards.empty() || model.connections.empty())
+        return;
+
+    BOOST_FOREACH(Connection &con, model.connections) {
+        BOOST_FOREACH(Guard guard, model.guards) {
+            BOOST_FOREACH(string id, guard.idList) {
+                if (con.id == id) {
+                    con.guard = guard;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 static void getStateForModel(const ptree &tree,
                              vector<Model> &submodels)
 {
@@ -284,24 +301,10 @@ static Model readModel(const ptree &modelTree,
     }
 
     getGuardsForModel(modelTree, model.guards);
-    // linkGuardsWithConnections(model.submodels);
+    linkGuardsWithConnections(model);
 
     getStateForModel(modelTree, model.submodels);
     linkStatesWithConnections(model);
-
-    // Set guard for message if exist
-    if (!model.guards.empty() && !model.connections.empty()) {
-        BOOST_FOREACH(Connection &con, model.connections) {
-            BOOST_FOREACH(Guard guard, model.guards) {
-                BOOST_FOREACH(string id, guard.idList) {
-                    if (con.id == id) {
-                        con.guard = guard;
-                        break;
-                    }
-                }
-            }
-        }
-    }
 
     return model;
 }
