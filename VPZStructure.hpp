@@ -57,12 +57,24 @@ struct Connection
     string id;
 };
 
+struct State
+{
+    string id;
+    string name;
+    string duration;
+    string start;
+    string finish;
+    Port inPort;
+    Port outPort;
+};
+
 struct Guard
 {
     string type;
     string value;
     vector<string> idList;
     vector<Connection> connections;
+    vector<State> states;
 };
 
 struct View
@@ -106,17 +118,6 @@ struct Experiment
     ExperimentCombination combination;
     vector<Condition> conditions;
     Views views;
-};
-
-struct State
-{
-    string id;
-    string name;
-    string duration;
-    string start;
-    string finish;
-    Port inPort;
-    Port outPort;
 };
 
 struct Model

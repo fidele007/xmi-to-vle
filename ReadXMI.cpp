@@ -175,6 +175,22 @@ static void getConnectionsForGuards(Model &model) {
     }
 }
 
+static void getStatesForGuards(Model &model)
+{
+    if (model.guards.empty())
+        return;
+
+    BOOST_FOREACH(Guard &guard, model.guards) {
+        vector<string> list = guard.idList;
+        BOOST_FOREACH(Model submodel, model.submodels) {
+            BOOST_FOREACH(State state, submodel.states) {
+                if (std::find(list.begin(), list.end(), state.id) != list.end())
+                    guard.states.push_back(state);
+            }
+        }
+    }
+}
+
 static Model readModel(const ptree &modelTree, 
                        const vector<ptree> allModels,
                        const bool isMainModel)
@@ -309,6 +325,7 @@ static Model readModel(const ptree &modelTree,
 
     getGuardsForModel(modelTree, model);
     getConnectionsForGuards(model);
+    getStatesForGuards(model);
 
     return model;
 }
