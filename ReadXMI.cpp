@@ -25,80 +25,10 @@ static vector<string> split(string data, string token)
     return output;
 }
 
-static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
+static void getStatesForModel(const ptree &modelTree, Model &model)
 {
-    BOOST_FOREACH(const ptree::value_type &child, tree) {
-        if (child.first != "fragment")
-            continue;
-
-        string fragType = child.second.get("<xmlattr>.xmi:type", "");
-
-        if (fragType != "uml:CombinedFragment")
-            continue;
-
-        string combinedFragType =
-            child.second.get<string>("<xmlattr>.interactionOperator");
-
-        BOOST_FOREACH(const ptree::value_type &frag, child.second) {
-            if (frag.first != "operand")
-                continue;
-
-            const ptree &guardSpec =
-                frag.second.get_child("guard.specification");
-            string value = guardSpec.get<string>("<xmlattr>.value");
-            // If no guard value is specified, set it to always true
-            if (value.empty())
-                value = "1";
-
-            Guard aGuard;
-            aGuard.value = value;
-            aGuard.type = combinedFragType;
-
-            BOOST_FOREACH(const ptree::value_type &subFrag, frag.second) {
-                if (subFrag.first != "fragment")
-                    continue;
-
-                string subFragType =
-                    subFrag.second.get<string>("<xmlattr>.xmi:type");
-
-                if (subFragType == "uml:CombinedFragment") {
-                    getGuardsForModel(frag.second, guards);
-                } else if (subFragType == "uml:MessageOccurrenceSpecification") {
-                    string associatedId =
-                        subFrag.second.get<string>("<xmlattr>.message");
-
-                    aGuard.idList.push_back(associatedId);
-                } else {
-                    continue;
-                }
-            }
-            
-            guards.push_back(aGuard);
-        }
-    }
-}
-
-// Set guard for message if exist
-static void linkGuardsWithConnections(Model &model) {
-    if (model.guards.empty() || model.connections.empty())
-        return;
-
-    BOOST_FOREACH(Connection &con, model.connections) {
-        BOOST_FOREACH(Guard guard, model.guards) {
-            BOOST_FOREACH(string id, guard.idList) {
-                if (con.id == id) {
-                    con.guard = guard;
-                    break;
-                }
-            }
-        }
-    }
-}
-
-static void getStateForModel(const ptree &tree,
-                             vector<Model> &submodels)
-{
-    BOOST_FOREACH(const ptree::value_type &child, tree) {
+    vector<Model> &submodels = model.submodels;
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
         if (child.first != "fragment")
             continue;
 
@@ -106,7 +36,7 @@ static void getStateForModel(const ptree &tree,
         if (fragType == "uml:CombinedFragment") {
             BOOST_FOREACH(const ptree::value_type &op, child.second) {
                 if (op.first == "operand")
-                    getStateForModel(op.second, submodels);
+                    getStatesForModel(op.second, model);
             }
         } else if (fragType == "uml:BehaviorExecutionSpecification") {
             string stateID = child.second.get("<xmlattr>.xmi:id", "");
@@ -147,7 +77,7 @@ static void getStateForModel(const ptree &tree,
     }
 }
 
-static void linkStatesWithConnections(Model &model)
+static void getPortsForStates(Model &model)
 {
     if (model.submodels.empty())
         return;
@@ -156,12 +86,106 @@ static void linkStatesWithConnections(Model &model)
         BOOST_FOREACH(State &state, submodel.states) {
             BOOST_FOREACH(Connection con, model.connections) {
                 if (state.start == con.origin.id ||
-                    state.start == con.destination.id ||
-                    state.finish == con.origin.id ||
-                    state.finish == con.destination.id)
+                    state.finish == con.origin.id)
                 {
-                    state.connections.push_back(con);
+                    state.outPort = con.origin;
                 }
+                else if (state.start == con.destination.id ||
+                         state.finish == con.destination.id)
+                {
+                    state.inPort = con.destination;
+                }
+            }
+        }
+    }
+}
+
+static void getGuardsForModel(const ptree &modelTree, Model &model)
+{
+    vector<Guard> &guards = model.guards;
+    BOOST_FOREACH(const ptree::value_type &child, modelTree) {
+        if (child.first != "fragment")
+            continue;
+
+        string fragType = child.second.get("<xmlattr>.xmi:type", "");
+
+        if (fragType != "uml:CombinedFragment")
+            continue;
+
+        string combinedFragType =
+            child.second.get<string>("<xmlattr>.interactionOperator");
+
+        BOOST_FOREACH(const ptree::value_type &frag, child.second) {
+            if (frag.first != "operand")
+                continue;
+
+            const ptree &guardSpec =
+                frag.second.get_child("guard.specification");
+            string value = guardSpec.get<string>("<xmlattr>.value");
+            // If no guard value is specified, set it to always true
+            if (value.empty())
+                value = "1";
+
+            Guard aGuard;
+            aGuard.value = value;
+            aGuard.type = combinedFragType;
+
+            BOOST_FOREACH(const ptree::value_type &subFrag, frag.second) {
+                if (subFrag.first != "fragment")
+                    continue;
+
+                string subFragType =
+                    subFrag.second.get<string>("<xmlattr>.xmi:type");
+
+                if (subFragType == "uml:CombinedFragment") {
+                    getGuardsForModel(frag.second, model);
+                } else if (subFragType == "uml:MessageOccurrenceSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.message");
+
+                    aGuard.idList.push_back(associatedId);
+                } else if (subFragType == "uml:BehaviorExecutionSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.xmi:id");
+
+                    aGuard.idList.push_back(associatedId);
+                } else {
+                    continue;
+                }
+            }
+
+            guards.push_back(aGuard);
+        }
+    }
+}
+
+static void getConnectionsForGuards(Model &model) {
+    if (model.guards.empty() || model.connections.empty())
+        return;
+
+    BOOST_FOREACH(Connection con, model.connections) {
+        BOOST_FOREACH(Guard &guard, model.guards) {
+            BOOST_FOREACH(string id, guard.idList) {
+                if (con.id == id) {
+                    guard.connections.push_back(con);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static void getStatesForGuards(Model &model)
+{
+    if (model.guards.empty())
+        return;
+
+    BOOST_FOREACH(Guard &guard, model.guards) {
+        vector<string> list = guard.idList;
+        BOOST_FOREACH(Model submodel, model.submodels) {
+            BOOST_FOREACH(State state, submodel.states) {
+                if (std::find(list.begin(), list.end(), state.id) != list.end())
+                    guard.states.push_back(state);
             }
         }
     }
@@ -270,10 +294,8 @@ static Model readModel(const ptree &modelTree,
             Model origModel = model.submodels[origIndex];
             con.origin.id = origID;
             con.origin.modelName = origModel.name;
-            con.origin.portName = con.name + ".out";
-            Port outPort;
-            outPort.name = con.origin.portName;
-            origModel.outPorts.push_back(outPort);
+            con.origin.name = con.name + ".out";
+            origModel.outPorts.push_back(con.origin);
             model.submodels[origIndex] = origModel;
 
             string destID = child.second.get<string>("<xmlattr>.receiveEvent");
@@ -290,21 +312,20 @@ static Model readModel(const ptree &modelTree,
             Model destModel = model.submodels[destIndex];
             con.destination.id = destID;
             con.destination.modelName = destModel.name;
-            con.destination.portName = con.name + ".in";
-            Port inPort;
-            inPort.name = con.destination.portName;
-            destModel.inPorts.push_back(inPort);
+            con.destination.name = con.name + ".in";
+            destModel.inPorts.push_back(con.destination);
             model.submodels[destIndex] = destModel;
 
             model.connections.push_back(con);
         }
     }
 
-    getGuardsForModel(modelTree, model.guards);
-    linkGuardsWithConnections(model);
+    getStatesForModel(modelTree, model);
+    getPortsForStates(model);
 
-    getStateForModel(modelTree, model.submodels);
-    linkStatesWithConnections(model);
+    getGuardsForModel(modelTree, model);
+    getConnectionsForGuards(model);
+    getStatesForGuards(model);
 
     return model;
 }
