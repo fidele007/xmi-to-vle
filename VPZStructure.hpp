@@ -36,6 +36,13 @@ enum ExperimentCombination {
     EC_total
 };
 
+struct Guard
+{
+    string type;
+    string value;
+    vector<string> idList;
+};
+
 struct AttachedView 
 {
     string name;
@@ -50,6 +57,7 @@ struct Port
 // Common struct for origin and destination
 struct Point
 {
+    string id; // store sendEvent(origin) or receiveEvent(destination)
     string modelName;
     string portName;
 };
@@ -60,6 +68,8 @@ struct Connection
     string name;
     Point origin;
     Point destination;
+    string id;
+    Guard guard;
 };
 
 struct View
@@ -105,6 +115,16 @@ struct Experiment
     Views views;
 };
 
+struct State
+{
+    string id;
+    string name;
+    string duration;
+    string start;
+    string finish;
+    vector<Connection> connections;
+};
+
 struct Model
 {
     string id;
@@ -118,7 +138,8 @@ struct Model
     vector<Port> outPorts;
     vector<Model> submodels;
     vector<Connection> connections;
-    map<string, string> taskDuration;
+    vector<Guard> guards;
+    vector<State> states;
 };
 
 struct Class

@@ -8,61 +8,93 @@
 using namespace std;
 using boost::filesystem::path;
 
-static string writeSigmaFunction(map<string, string> taskMap)
+static string writeSigmaFunction(vector<State> stateVect)
 {
     string sigmaFunc;
-    if (!taskMap.empty()) {
-        sigmaFunc.append("        switch (modelState) {\n");
-        sigmaFunc.append("        case ");
-        sigmaFunc.append(taskMap.begin()->first);
+    if (!stateVect.empty()) {
+        sigmaFunc = "    virtual vd::Time timeAdvance() const override\n"
+                    "    {\n"
+                    "        switch (modelPhase) {\n"
+                    "        case ";
+        sigmaFunc.append(stateVect.begin()->name);
         sigmaFunc.append(":\n            return ");
-        sigmaFunc.append(taskMap.begin()->second);
+        sigmaFunc.append(stateVect.begin()->duration);
         sigmaFunc.append(";\n");
 
-        map<string, string>::iterator it;
-        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+        vector<State>::iterator it;
+        for (it = std::next(stateVect.begin()); it != stateVect.end(); ++it) {
             sigmaFunc.append("        case ");
-            sigmaFunc.append(it->first);
+            sigmaFunc.append(it->name);
             sigmaFunc.append(":\n            return ");
-            sigmaFunc.append(it->second);
+            sigmaFunc.append(it->duration);
             sigmaFunc.append(";\n");
         }
         sigmaFunc.append("        default:\n");
         sigmaFunc.append("            return vd::infinity;\n");
         sigmaFunc.append("        };\n");
+        sigmaFunc.append("    }");
     }
 
     return sigmaFunc;
 }
 
-static string writeStateEnum(map<string, string> taskMap)
+static string writeStateEnum(vector<State> stateVect)
 {
     string stateEnum;
-    if (!taskMap.empty()) {
-        stateEnum.append("    enum ");
-        stateEnum.append("State");
-        stateEnum.append(" {\n        ");
-        stateEnum.append(taskMap.begin()->first);
+    if (!stateVect.empty()) {
+        stateEnum.append("    enum PHASE {\n");
+        stateEnum.append("        ");
+        stateEnum.append(stateVect.begin()->name);
 
-        if (taskMap.size() > 1)
+        if (stateVect.size() > 1)
             stateEnum.append(",");
 
         stateEnum.append("\n");
 
-        map<string, string>::iterator it;
-        for (it = std::next(taskMap.begin()); it != taskMap.end(); ++it) {
+        vector<State>::iterator it;
+        for (it = std::next(stateVect.begin()); it != stateVect.end(); ++it) {
             stateEnum.append("        ");
-            stateEnum.append(it->first);
-            if (it != --taskMap.end())
+            stateEnum.append(it->name);
+            if (it != --stateVect.end())
                 stateEnum.append(",");
 
             stateEnum.append("\n");
         }
         stateEnum.append("    };\n");
-        stateEnum.append("    State modelState;\n");
+        stateEnum.append("    PHASE modelPhase;\n");
     }
 
     return stateEnum;
+}
+
+static string writeExternalTransition(const vector<Port> inPorts)
+{
+    string extFunc;
+    if (inPorts.empty())
+        return extFunc;
+
+    extFunc = "    virtual void externalTransition(\n"
+              "            const vd::ExternalEventList& event,\n"
+              "            vle::devs::Time /*time*/) override\n"
+              "    {\n"
+              "        vd::ExternalEventList::const_iterator it;\n"
+              "        for (it = event.begin(); it != event.end(); ++it) {\n";
+    vector<Port>::const_iterator it;
+    for (it = inPorts.begin(); it != inPorts.end(); ++it) {
+        if (it == inPorts.begin())
+            extFunc.append("            if ((*it)->onPort(\"");
+        else
+            extFunc.append("            else if ((*it)->onPort(\"");
+
+        extFunc.append(it->name);
+        extFunc.append("\")) {\n");
+        extFunc.append("                modelPhase = \n"); //TODO: to change
+        extFunc.append("            }\n");
+    }
+    extFunc.append("        }\n");
+    extFunc.append("    }");
+
+    return extFunc;
 }
 
 static void writeModelToCPP(string fileContent, 
@@ -77,9 +109,10 @@ static void writeModelToCPP(string fileContent,
                                                          "Simple",
                                                          submodel.name);
 
-        map<string, string> taskMap = submodel.taskDuration;
-        string stateEnum = writeStateEnum(taskMap);
-        string sigmaFunc = writeSigmaFunction(taskMap);
+        vector<State> stateVect = submodel.states;
+        string stateEnum = writeStateEnum(stateVect);
+        string sigmaFunc = writeSigmaFunction(stateVect);
+        string extFunc = writeExternalTransition(submodel.inPorts);
 
         if (!stateEnum.empty()) {
             string publicString = "public:";
@@ -93,18 +126,28 @@ static void writeModelToCPP(string fileContent,
         }
 
         if (!sigmaFunc.empty()) {
-            string origTaFunc = "virtual vd::Time timeAdvance() const override\n";
-            origTaFunc.append("    {\n");
-            origTaFunc.append("        return vd::infinity;\n");
-            origTaFunc.append("    }");
+            string origTaFunc = 
+                "    virtual vd::Time timeAdvance() const override\n"
+                "    {\n"
+                "        return vd::infinity;\n"
+                "    }";
 
-            string newTaFunc = "virtual vd::Time timeAdvance() const override\n";
-            newTaFunc.append("    {\n");
-            newTaFunc.append(sigmaFunc);
-            newTaFunc.append("    }");
             submodelContent = boost::replace_all_copy(submodelContent,
                                                       origTaFunc,
-                                                      newTaFunc);
+                                                      sigmaFunc);
+        }
+
+        if (!extFunc.empty()) {
+            string origExtFunc =
+                "    virtual void externalTransition(\n"
+                "            const vd::ExternalEventList& /*event*/,\n"
+                "            vle::devs::Time /*time*/) override\n"
+                "    {\n"
+                "    }";
+
+            submodelContent = boost::replace_all_copy(submodelContent,
+                                                      origExtFunc,
+                                                      extFunc);
         }
 
         out << submodelContent;

@@ -25,6 +25,148 @@ static vector<string> split(string data, string token)
     return output;
 }
 
+static void getGuardsForModel(const ptree &tree, vector<Guard> &guards)
+{
+    BOOST_FOREACH(const ptree::value_type &child, tree) {
+        if (child.first != "fragment")
+            continue;
+
+        string fragType = child.second.get("<xmlattr>.xmi:type", "");
+
+        if (fragType != "uml:CombinedFragment")
+            continue;
+
+        string combinedFragType =
+            child.second.get<string>("<xmlattr>.interactionOperator");
+
+        BOOST_FOREACH(const ptree::value_type &frag, child.second) {
+            if (frag.first != "operand")
+                continue;
+
+            const ptree &guardSpec =
+                frag.second.get_child("guard.specification");
+            string value = guardSpec.get<string>("<xmlattr>.value");
+            // If no guard value is specified, set it to always true
+            if (value.empty())
+                value = "1";
+
+            Guard aGuard;
+            aGuard.value = value;
+            aGuard.type = combinedFragType;
+
+            BOOST_FOREACH(const ptree::value_type &subFrag, frag.second) {
+                if (subFrag.first != "fragment")
+                    continue;
+
+                string subFragType =
+                    subFrag.second.get<string>("<xmlattr>.xmi:type");
+
+                if (subFragType == "uml:CombinedFragment") {
+                    getGuardsForModel(frag.second, guards);
+                } else if (subFragType == "uml:MessageOccurrenceSpecification") {
+                    string associatedId =
+                        subFrag.second.get<string>("<xmlattr>.message");
+
+                    aGuard.idList.push_back(associatedId);
+                } else {
+                    continue;
+                }
+            }
+            
+            guards.push_back(aGuard);
+        }
+    }
+}
+
+// Set guard for message if exist
+static void linkGuardsWithConnections(Model &model) {
+    if (model.guards.empty() || model.connections.empty())
+        return;
+
+    BOOST_FOREACH(Connection &con, model.connections) {
+        BOOST_FOREACH(Guard guard, model.guards) {
+            BOOST_FOREACH(string id, guard.idList) {
+                if (con.id == id) {
+                    con.guard = guard;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static void getStateForModel(const ptree &tree,
+                             vector<Model> &submodels)
+{
+    BOOST_FOREACH(const ptree::value_type &child, tree) {
+        if (child.first != "fragment")
+            continue;
+
+        string fragType = child.second.get("<xmlattr>.xmi:type", "");
+        if (fragType == "uml:CombinedFragment") {
+            BOOST_FOREACH(const ptree::value_type &op, child.second) {
+                if (op.first == "operand")
+                    getStateForModel(op.second, submodels);
+            }
+        } else if (fragType == "uml:BehaviorExecutionSpecification") {
+            string stateID = child.second.get("<xmlattr>.xmi:id", "");
+            string start = child.second.get("<xmlattr>.start", "");
+            string finish = child.second.get("<xmlattr>.finish", "");
+            BOOST_FOREACH(const ptree::value_type &com, child.second) {
+                if (com.first != "ownedComment")
+                    continue;
+
+                string stateComment = com.second.get("body", "");
+                if (stateComment.empty())
+                    continue;
+
+                string modelID = child.second.get<string>("<xmlattr>.covered");
+                int modelInd = getModelIndexFromID(submodels, modelID);
+                if (modelInd == -1) {
+                    cerr << "WARNING: Model with ID "
+                         << modelID
+                         << " not found. State is skipped."
+                         << endl;
+
+                    continue;
+                }
+
+                vector<State> &states = submodels[modelInd].states;
+                vector<string> stateString = split(stateComment, "/time=");
+
+                State aState;
+                aState.id = stateID;
+                aState.name = stateString[0];
+                aState.duration = stateString[1];
+                aState.start = start;
+                aState.finish = finish;
+
+                states.push_back(aState);
+            }
+        }
+    }
+}
+
+static void linkStatesWithConnections(Model &model)
+{
+    if (model.submodels.empty())
+        return;
+
+    BOOST_FOREACH(Model &submodel, model.submodels) {
+        BOOST_FOREACH(State &state, submodel.states) {
+            BOOST_FOREACH(Connection con, model.connections) {
+                if (state.start == con.origin.id ||
+                    state.start == con.destination.id ||
+                    state.finish == con.origin.id ||
+                    state.finish == con.destination.id)
+                {
+                    state.connections.push_back(con);
+                }
+            }
+        }
+    }
+}
+
 static Model readModel(const ptree &modelTree, 
                        const vector<ptree> allModels,
                        const bool isMainModel)
@@ -105,6 +247,7 @@ static Model readModel(const ptree &modelTree,
             model.submodels.push_back(submodel);
         } else if (child.first == "message") {
             Connection con;
+            con.id = child.second.get<string>("<xmlattr>.xmi:id");
             con.name = child.second.get("<xmlattr>.name", "");
             if (con.name.empty()) {
                 // TODO: Automically add connection names
@@ -125,6 +268,7 @@ static Model readModel(const ptree &modelTree,
             }
 
             Model origModel = model.submodels[origIndex];
+            con.origin.id = origID;
             con.origin.modelName = origModel.name;
             con.origin.portName = con.name + ".out";
             Port outPort;
@@ -144,6 +288,7 @@ static Model readModel(const ptree &modelTree,
             }
 
             Model destModel = model.submodels[destIndex];
+            con.destination.id = destID;
             con.destination.modelName = destModel.name;
             con.destination.portName = con.name + ".in";
             Port inPort;
@@ -152,41 +297,14 @@ static Model readModel(const ptree &modelTree,
             model.submodels[destIndex] = destModel;
 
             model.connections.push_back(con);
-        } else if (child.first == "fragment") {
-            string fragType = child.second.get("<xmlattr>.xmi:type", "");
-            if (fragType != "uml:BehaviorExecutionSpecification")
-                continue;
-
-            BOOST_FOREACH(const ptree::value_type &com, child.second) {
-                if (com.first != "ownedComment")
-                    continue;
-
-                string taskComment = com.second.get("body", "");
-                if (taskComment.empty())
-                    continue;
-
-                string modelID = child.second.get<string>("<xmlattr>.covered");
-                int modelInd = getModelIndexFromID(model.submodels, modelID);
-                if (modelInd == -1) {
-                    cerr << "WARNING: Model with ID "
-                         << modelID
-                         << " not found. Task is skipped."
-                         << endl;
-
-                    continue;
-                }
-
-                Model taskModel = model.submodels[modelInd];
-                map<string, string> taskDuration = taskModel.taskDuration;
-
-                vector<string> taskVect = split(taskComment, "/time=");
-                taskDuration[taskVect[0]] = taskVect[1];
-                
-                taskModel.taskDuration = taskDuration;
-                model.submodels[modelInd] = taskModel;
-            }
         }
     }
+
+    getGuardsForModel(modelTree, model.guards);
+    linkGuardsWithConnections(model);
+
+    getStateForModel(modelTree, model.submodels);
+    linkStatesWithConnections(model);
 
     return model;
 }
